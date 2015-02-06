@@ -634,7 +634,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 };
 
                 match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
-                                                    bc_data_deflated.as_slice()) {
+                                                    &bc_data_deflated[]) {
                     Ok(()) => {}
                     Err(e) => {
                         sess.err(&format!("failed to write compressed bytecode: \

@@ -28,6 +28,7 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
+use core::cvt::As;
 
 use str::{self, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
@@ -92,7 +93,7 @@ impl String {
     ///
     /// ```
     /// let s = String::from_str("hello");
-    /// assert_eq!(s.as_slice(), "hello");
+    /// assert_eq!(&s[], "hello");
     /// ```
     #[inline]
     #[unstable(feature = "collections",
@@ -140,7 +141,7 @@ impl String {
     /// ```rust
     /// let input = b"Hello \xF0\x90\x80World";
     /// let output = String::from_utf8_lossy(input);
-    /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
+    /// assert_eq!(&output[], "Hello \u{FFFD}World");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
@@ -356,7 +357,7 @@ impl String {
     /// ```
     /// let mut s = String::from_str("foo");
     /// s.push_str("bar");
-    /// assert_eq!(s.as_slice(), "foobar");
+    /// assert_eq!(&s[], "foobar");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -451,7 +452,7 @@ impl String {
     /// s.push('1');
     /// s.push('2');
     /// s.push('3');
-    /// assert_eq!(s.as_slice(), "abc123");
+    /// assert_eq!(&s[], "abc123");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -504,7 +505,7 @@ impl String {
     /// ```
     /// let mut s = String::from_str("hello");
     /// s.truncate(2);
-    /// assert_eq!(s.as_slice(), "he");
+    /// assert_eq!(&s[], "he");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -623,7 +624,7 @@ impl String {
     ///     assert!(vec == &mut vec![104, 101, 108, 108, 111]);
     ///     vec.reverse();
     /// }
-    /// assert_eq!(s.as_slice(), "olleh");
+    /// assert_eq!(&s[], "olleh");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -799,11 +800,9 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Str stabilization")]
-impl Str for String {
+impl As<str> for String {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_slice<'a>(&'a self) -> &'a str {
+    fn cvt_as(&self) -> &str {
         unsafe { mem::transmute(&*self.vec) }
     }
 }
@@ -977,9 +976,9 @@ impl<'a> IntoCow<'a, String, str> for &'a str {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type CowString<'a> = Cow<'a, String, str>;
 
-impl<'a> Str for CowString<'a> {
+impl<'a> As<str> for CowString<'a> {
     #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
+    fn cvt_as(&self) -> &str {
         &**self
     }
 }

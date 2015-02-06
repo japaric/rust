@@ -81,8 +81,7 @@
 //!     }
 //!
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed> {
-//!         let &Edges(ref edges) = self;
-//!         edges.as_slice().into_cow()
+//!         self.0[].into_cow()
 //!     }
 //!
 //!     fn source(&self, e: &Ed) -> Nd { let &(s,_) = e; s }
@@ -168,7 +167,7 @@
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd) -> dot::LabelText<'b> {
-//!         dot::LabelText::LabelStr(self.nodes[*n].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[*n][].into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
 //!         dot::LabelText::LabelStr("&sube;".into_cow())
@@ -225,7 +224,7 @@
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
-//!         dot::LabelText::LabelStr(self.nodes[i].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[i][].into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
 //!         dot::LabelText::LabelStr("&sube;".into_cow())
@@ -234,12 +233,12 @@
 //!
 //! impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for Graph {
 //!     fn nodes(&'a self) -> dot::Nodes<'a,Nd<'a>> {
-//!         self.nodes.iter().map(|s|s.as_slice()).enumerate().collect()
+//!         self.nodes.iter().map(|s| &s[]).enumerate().collect()
 //!     }
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> {
 //!         self.edges.iter()
-//!             .map(|&(i,j)|((i, self.nodes[i].as_slice()),
-//!                           (j, self.nodes[j].as_slice())))
+//!             .map(|&(i,j)|((i, &self.nodes[i][]),
+//!                           (j, &self.nodes[j][])))
 //!             .collect()
 //!     }
 //!     fn source(&self, e: &Ed<'a>) -> Nd<'a> { let &(s,_) = e; s }

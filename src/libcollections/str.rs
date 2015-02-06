@@ -64,9 +64,9 @@ use core::ops::Index;
 use core::ops::RangeFull;
 use core::option::Option::{self, Some, None};
 use core::result::Result;
-use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
+use core::cvt::As;
 
 use ring_buf::RingBuf;
 use slice::SliceExt;
@@ -75,7 +75,7 @@ use unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
 
-pub use core::str::{FromStr, Utf8Error, Str};
+pub use core::str::{FromStr, Utf8Error};
 pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
 pub use core::str::{Split, SplitTerminator};
 pub use core::str::{SplitN, RSplitN};
@@ -87,27 +87,27 @@ pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 Section: Creating a string
 */
 
-impl<S: Str> SliceConcatExt<str, String> for [S] {
+impl<S: As<str>> SliceConcatExt<str, String> for [S] {
     fn concat(&self) -> String {
-        let s = self.as_slice();
+        let s = self;
 
         if s.is_empty() {
             return String::new();
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = s.iter().map(|s| s.as_slice().len()).sum();
+        let len = s.iter().map(|s| s.cvt_as().len()).sum();
         let mut result = String::with_capacity(len);
 
         for s in s {
-            result.push_str(s.as_slice())
+            result.push_str(s.cvt_as())
         }
 
         result
     }
 
     fn connect(&self, sep: &str) -> String {
-        let s = self.as_slice();
+        let s = self;
 
         if s.is_empty() {
             return String::new();
@@ -121,7 +121,7 @@ impl<S: Str> SliceConcatExt<str, String> for [S] {
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (s.len() - 1)
-            + s.iter().map(|s| s.as_slice().len()).sum();
+            + s.iter().map(|s| s.cvt_as().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
@@ -131,7 +131,7 @@ impl<S: Str> SliceConcatExt<str, String> for [S] {
             } else {
                 result.push_str(sep);
             }
-            result.push_str(s.as_slice());
+            result.push_str(s.cvt_as());
         }
         result
     }
@@ -1247,10 +1247,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```rust
     /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
-    /// assert_eq!(gr1.as_slice(), b);
+    /// assert_eq!(&gr1[], b);
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
-    /// assert_eq!(gr2.as_slice(), b);
+    /// assert_eq!(&gr2[], b);
     /// ```
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
@@ -1266,7 +1266,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```rust
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
     /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
-    /// assert_eq!(gr_inds.as_slice(), b);
+    /// assert_eq!(&gr_inds[], b);
     /// ```
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
@@ -2774,9 +2774,10 @@ mod tests {
     #[test]
     fn test_str_default() {
         use core::default::Default;
-        fn t<S: Default + Str>() {
+        use core::cvt::As;
+        fn t<S: Default + As<str>>() {
             let s: S = Default::default();
-            assert_eq!(s.as_slice(), "");
+            assert_eq!(s.cvt_as(), "");
         }
 
         t::<&str>();

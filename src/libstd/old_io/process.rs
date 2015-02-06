@@ -367,8 +367,8 @@ impl Command {
     /// };
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_slice()));
-    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_slice()));
+    /// println!("stdout: {}", String::from_utf8_lossy(&output.output));
+    /// println!("stderr: {}", String::from_utf8_lossy(&output.error));
     /// ```
     pub fn output(&self) -> IoResult<ProcessOutput> {
         self.spawn().and_then(|p| p.wait_with_output())
@@ -756,7 +756,7 @@ mod tests {
     use old_io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
     use prelude::v1::{Ok, Err, range, drop, Some, None, Vec};
     use prelude::v1::{Path, String, Reader, Writer, Clone};
-    use prelude::v1::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
+    use prelude::v1::{SliceExt, StrExt, ToString, GenericPath};
     use old_io::fs::PathExtensions;
     use old_io::timer::*;
     use rt::running_on_valgrind;

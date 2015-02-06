@@ -140,8 +140,8 @@ mod prelude {
     pub use core::result::Result::{Ok, Err};
 
     // in core and collections (may differ).
-    pub use slice::{AsSlice, SliceExt};
-    pub use str::{Str, StrExt};
+    pub use slice::SliceExt;
+    pub use str::StrExt;
 
     // from other crates.
     pub use alloc::boxed::Box;

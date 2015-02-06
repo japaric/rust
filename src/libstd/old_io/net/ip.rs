@@ -435,7 +435,7 @@ pub struct ParseError;
 ///     let tcp_l = TcpListener::bind("localhost:12345");
 ///
 ///     let mut udp_s = UdpSocket::bind(("127.0.0.1", 23451u16)).unwrap();
-///     udp_s.send_to([7u8, 7u8, 7u8].as_slice(), (Ipv4Addr(127, 0, 0, 1), 23451u16));
+///     udp_s.send_to(&[7u8, 7u8, 7u8], (Ipv4Addr(127, 0, 0, 1), 23451u16));
 /// }
 /// ```
 pub trait ToSocketAddr {

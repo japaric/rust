@@ -25,7 +25,6 @@ use error::Error;
 use fmt;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
-use marker::Sized;
 use mem;
 use num::Int;
 use ops::{Fn, FnMut};
@@ -1274,26 +1273,6 @@ mod traits {
             self
         }
     }
-}
-
-/// Any string that can be represented as a slice
-#[unstable(feature = "core",
-           reason = "Instead of taking this bound generically, this trait will be \
-                     replaced with one of slicing syntax (&foo[]), deref coercions, or \
-                     a more generic conversion trait")]
-pub trait Str {
-    /// Work with `self` as a slice.
-    fn as_slice<'a>(&'a self) -> &'a str;
-}
-
-impl Str for str {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { self }
-}
-
-impl<'a, S: ?Sized> Str for &'a S where S: Str {
-    #[inline]
-    fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
 /// Return type of `StrExt::split`

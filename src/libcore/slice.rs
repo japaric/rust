@@ -52,7 +52,7 @@ use ptr;
 use ptr::PtrExt;
 use mem;
 use mem::size_of;
-use marker::{Sized, self};
+use marker;
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;
@@ -596,32 +596,6 @@ impl<T> ops::IndexMut<RangeFull> for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 // Common traits
 ////////////////////////////////////////////////////////////////////////////////
-
-/// Data that is viewable as a slice.
-#[unstable(feature = "core",
-           reason = "will be replaced by slice syntax")]
-pub trait AsSlice<T> {
-    /// Work with `self` as a slice.
-    fn as_slice<'a>(&'a self) -> &'a [T];
-}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<T> AsSlice<T> for [T] {
-    #[inline(always)]
-    fn as_slice<'a>(&'a self) -> &'a [T] { self }
-}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
-    #[inline(always)]
-    fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
-}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
-    #[inline(always)]
-    fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {

@@ -500,7 +500,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
-    /// assert_eq!(buf.iter().collect::<Vec<&i32>>().as_slice(), b);
+    /// assert_eq!(&buf.iter().collect::<Vec<&i32>>()[], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {

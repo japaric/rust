@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cvt::As;
+
 fn main() {
-    let _: &Str = &"x";
+    let _: &As<str> = &"x";
 }

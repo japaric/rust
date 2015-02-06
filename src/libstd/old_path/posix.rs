@@ -20,9 +20,10 @@ use iter::{Iterator, IteratorExt, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
-use slice::{AsSlice, Split, SliceExt, SliceConcatExt};
+use slice::{Split, SliceExt, SliceConcatExt};
 use str::{self, FromStr, StrExt};
 use vec::Vec;
+use cvt::As;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -338,11 +339,11 @@ impl Path {
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    fn normalize<V: ?Sized + AsSlice<u8>>(v: &V) -> Vec<u8> {
+    fn normalize<V: ?Sized + As<[u8]>>(v: &V) -> Vec<u8> {
         // borrowck is being very picky
         let val = {
-            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
-            let v_ = if is_abs { &v.as_slice()[1..] } else { v.as_slice() };
+            let is_abs = !v.cvt_as().is_empty() && v.cvt_as()[0] == SEP_BYTE;
+            let v_ = if is_abs { &v.cvt_as()[1..] } else { v.cvt_as() };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
@@ -370,7 +371,7 @@ impl Path {
             }
         };
         match val {
-            None => v.as_slice().to_vec(),
+            None => v.cvt_as().to_vec(),
             Some(val) => val
         }
     }
@@ -446,8 +447,8 @@ mod tests {
     use iter::IteratorExt;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
-    use slice::{AsSlice, SliceExt};
-    use str::{self, Str, StrExt};
+    use slice::SliceExt;
+    use str::{self, StrExt};
     use string::ToString;
     use vec::Vec;
 

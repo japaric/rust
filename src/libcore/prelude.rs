@@ -43,5 +43,5 @@ pub use iter::{ExactSizeIterator};
 pub use option::Option::{self, Some, None};
 pub use ptr::{PtrExt, MutPtrExt};
 pub use result::Result::{self, Ok, Err};
-pub use slice::{AsSlice, SliceExt};
-pub use str::{Str, StrExt};
+pub use slice::SliceExt;
+pub use str::StrExt;

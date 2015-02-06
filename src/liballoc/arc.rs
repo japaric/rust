@@ -105,7 +105,7 @@ use heap::deallocate;
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         Thread::spawn(move || {
-///             let local_numbers = child_numbers.as_slice();
+///             let local_numbers = &child_numbers[];
 ///
 ///             // Work with the local numbers
 ///         });

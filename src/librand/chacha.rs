@@ -197,7 +197,7 @@ impl Rand for ChaChaRng {
         for word in &mut key {
             *word = other.gen();
         }
-        SeedableRng::from_seed(key.as_slice())
+        SeedableRng::from_seed(&key[])
     }
 }
 

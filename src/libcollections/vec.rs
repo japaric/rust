@@ -67,6 +67,7 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::slice;
 use core::uint;
+use core::cvt::As;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -810,13 +811,13 @@ impl<T> Vec<T> {
     /// ```
     /// let v = vec![0u, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
-    /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
+    /// assert_eq!(&w[], &[3, 4, 5][]);
     ///
     /// #[derive(PartialEq, Debug)]
     /// struct Newtype(u8);
     /// let bytes = vec![0x11, 0x22];
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
-    /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
+    /// assert_eq!(&newtyped_bytes[], &[Newtype(0x11), Newtype(0x22)][]);
     /// ```
     #[unstable(feature = "collections",
                reason = "API may change to provide stronger guarantees")]
@@ -1325,7 +1326,7 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &[T] {
-        self.as_slice()
+        self.cvt_as()
     }
 }
 
@@ -1366,7 +1367,7 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
-    fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
+    fn deref<'a>(&'a self) -> &'a [T] { self.cvt_as() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1506,20 +1507,9 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-impl<T> AsSlice<T> for Vec<T> {
-    /// Returns a slice into `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// fn foo(slice: &[int]) {}
-    ///
-    /// let vec = vec![1, 2];
-    /// foo(vec.as_slice());
-    /// ```
+impl<T> As<[T]> for Vec<T> {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
+    fn cvt_as(&self) -> &[T] {
         unsafe {
             mem::transmute(RawSlice {
                 data: *self.ptr,

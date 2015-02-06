@@ -53,8 +53,8 @@ use ptr::PtrExt;
 use ptr;
 use result::Result::{Err, Ok};
 use result::Result;
-use slice::{AsSlice, SliceExt};
-use str::{Str, StrExt};
+use slice::SliceExt;
+use str::StrExt;
 use str;
 use string::{String, ToString};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
@@ -272,7 +272,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// let key = "PATH";
 /// let mut paths = os::getenv_as_bytes(key).map_or(Vec::new(), os::split_paths);
 /// paths.push(Path::new("/home/xyz/bin"));
-/// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
+/// os::setenv(key, os::join_paths(&paths).unwrap());
 /// ```
 #[deprecated(since = "1.0.0", reason = "renamed to env::join_paths")]
 #[unstable(feature = "os")]

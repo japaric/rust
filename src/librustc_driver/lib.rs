@@ -675,9 +675,9 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     use syntax::diagnostics::registry::Registry;
 
     let all_errors = Vec::new() +
-        rustc::diagnostics::DIAGNOSTICS.as_slice() +
-        rustc_typeck::diagnostics::DIAGNOSTICS.as_slice() +
-        rustc_resolve::diagnostics::DIAGNOSTICS.as_slice();
+        &rustc::diagnostics::DIAGNOSTICS[] +
+        &rustc_typeck::diagnostics::DIAGNOSTICS[] +
+        &rustc_resolve::diagnostics::DIAGNOSTICS[];
 
     Registry::new(&*all_errors)
 }

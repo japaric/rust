@@ -16,7 +16,7 @@
 //! ```rust
 //! // slicing a Vec
 //! let vec = vec!(1, 2, 3);
-//! let int_slice = vec.as_slice();
+//! let int_slice = &vec[];
 //! // coercing an array to a slice
 //! let str_slice: &[&str] = &["one", "two", "three"];
 //! ```
@@ -105,10 +105,11 @@ use core::ptr;
 use core::result::Result;
 use core::slice as core_slice;
 use self::Direction::*;
+use core::cvt::As;
 
 use vec::Vec;
 
-pub use core::slice::{Chunks, AsSlice, Windows};
+pub use core::slice::{Chunks, Windows};
 pub use core::slice::{Iter, IterMut};
 pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
@@ -397,7 +398,6 @@ pub trait SliceExt {
     ///
     /// ```rust
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    /// let s = s.as_slice();
     ///
     /// let seek = 13;
     /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Ok(9));
@@ -683,7 +683,6 @@ pub trait SliceExt {
     ///
     /// ```rust
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    /// let s = s.as_slice();
     ///
     /// assert_eq!(s.binary_search(&13),  Ok(9));
     /// assert_eq!(s.binary_search(&4),   Err(7));
@@ -1114,23 +1113,23 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     fn connect(&self, sep: &T) -> U;
 }
 
-impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
+impl<T: Clone, V: As<[T]>> SliceConcatExt<T, Vec<T>> for [V] {
     fn concat(&self) -> Vec<T> {
-        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let size = self.iter().fold(0u, |acc, v| acc + v.cvt_as().len());
         let mut result = Vec::with_capacity(size);
         for v in self {
-            result.push_all(v.as_slice())
+            result.push_all(v.cvt_as())
         }
         result
     }
 
     fn connect(&self, sep: &T) -> Vec<T> {
-        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let size = self.iter().fold(0u, |acc, v| acc + v.cvt_as().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
         for v in self {
             if first { first = false } else { result.push(sep.clone()) }
-            result.push_all(v.as_slice())
+            result.push_all(v.cvt_as())
         }
         result
     }
@@ -1508,7 +1507,6 @@ mod tests {
     use core::cmp::Ordering::{Greater, Less, Equal};
     use core::prelude::{Some, None, range, Clone};
     use core::prelude::{Iterator, IteratorExt};
-    use core::prelude::{AsSlice};
     use core::prelude::Ord;
     use core::default::Default;
     use core::mem;

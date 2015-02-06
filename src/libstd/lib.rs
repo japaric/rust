@@ -176,6 +176,7 @@ pub use core::simd;
 pub use core::result;
 pub use core::option;
 pub use core::error;
+pub use core::cvt;
 
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;

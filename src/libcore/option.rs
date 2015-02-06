@@ -154,7 +154,6 @@ use mem;
 use ops::{Deref, FnOnce};
 use result::Result::{Ok, Err};
 use result::Result;
-use slice::AsSlice;
 use slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
@@ -747,22 +746,6 @@ impl<T: Default> Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
-
-#[unstable(feature = "core",
-           reason = "waiting on the stability of the trait itself")]
-impl<T> AsSlice<T> for Option<T> {
-    /// Convert from `Option<T>` to `&[T]` (without copying)
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        match *self {
-            Some(ref x) => slice::ref_slice(x),
-            None => {
-                let result: &[_] = &[];
-                result
-            }
-        }
-    }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
