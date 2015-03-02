@@ -181,7 +181,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
                 let hi = x + y;
                 let lo = y - (hi - x);
-                if lo != Float::zero() {
+                if lo != T::zero() {
                     partials[j] = lo;
                     j += 1;
                 }
@@ -210,7 +210,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
 
     fn mean(&self) -> T {
         assert!(self.len() != 0);
-        self.sum() / FromPrimitive::from_uint(self.len()).unwrap()
+        self.sum() / T::from_uint(self.len()).unwrap()
     }
 
     fn median(&self) -> T {

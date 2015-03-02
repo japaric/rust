@@ -342,9 +342,9 @@ pub trait Int
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
-            Some(x)                      => x,
-            None if other >= Int::zero() => Int::max_value(),
-            None                         => Int::min_value(),
+            Some(x)                       => x,
+            None if other >= Self::zero() => Int::max_value(),
+            None                          => Int::min_value(),
         }
     }
 
@@ -354,9 +354,9 @@ pub trait Int
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
-            Some(x)                      => x,
-            None if other >= Int::zero() => Int::min_value(),
-            None                         => Int::max_value(),
+            Some(x)                       => x,
+            None if other >= Self::zero() => Int::min_value(),
+            None                          => Int::max_value(),
         }
     }
 
@@ -585,7 +585,7 @@ macro_rules! int_impl {
             fn checked_div(self, v: $T) -> Option<$T> {
                 match v {
                     0   => None,
-                   -1 if self == Int::min_value()
+                   -1 if self == <$T>::min_value()
                         => None,
                     v   => Some(self / v),
                 }
@@ -696,7 +696,7 @@ pub trait UnsignedInt: Int {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn is_power_of_two(self) -> bool {
-        (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
+        (self - Self::one()) & self == Self::zero() && !(self == Self::zero())
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
@@ -1670,7 +1670,7 @@ macro_rules! from_str_radix_int_impl {
                        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                        radix);
 
-                let is_signed_ty = (0 as $T) > Int::min_value();
+                let is_signed_ty = (0 as $T) > <$T>::min_value();
 
                 match src.slice_shift_char() {
                     Some(('-', "")) => Err(PIE { kind: Empty }),

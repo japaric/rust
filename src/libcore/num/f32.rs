@@ -158,7 +158,7 @@ impl Float for f32 {
     /// Returns `true` if the number is infinite.
     #[inline]
     fn is_infinite(self) -> bool {
-        self == Float::infinity() || self == Float::neg_infinity()
+        self == f32::infinity() || self == f32::neg_infinity()
     }
 
     /// Returns `true` if the number is neither infinite or NaN.
@@ -315,14 +315,14 @@ impl Float for f32 {
     /// `Float::infinity()`.
     #[inline]
     fn is_positive(self) -> bool {
-        self > 0.0 || (1.0 / self) == Float::infinity()
+        self > 0.0 || (1.0 / self) == f32::infinity()
     }
 
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
     #[inline]
     fn is_negative(self) -> bool {
-        self < 0.0 || (1.0 / self) == Float::neg_infinity()
+        self < 0.0 || (1.0 / self) == f32::neg_infinity()
     }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
