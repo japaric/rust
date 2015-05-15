@@ -158,6 +158,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Custom unsized types: `unsized type Slice<T>`
     ("unsized_types", "1.3.0", Active),
+
+    // Overloaded augmented assignment `a += b`; RFC 953
+    ("augmented_assignments", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -315,6 +318,7 @@ pub enum AttributeType {
 /// A set of features to be used by later passes.
 pub struct Features {
     pub unsized_types: bool,
+    pub augmented_assignments: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub visible_private_types: bool,
@@ -339,6 +343,7 @@ impl Features {
     pub fn new() -> Features {
         Features {
             unsized_types: false,
+            augmented_assignments: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             visible_private_types: false,
@@ -791,6 +796,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
 
     Features {
         unsized_types: cx.has_feature("unsized_types"),
+        augmented_assignments: cx.has_feature("augmented_assignments"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         visible_private_types: cx.has_feature("visible_private_types"),
