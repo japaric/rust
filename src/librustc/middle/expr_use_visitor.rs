@@ -576,8 +576,18 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprAssign(ref lhs, ref rhs) => {
-                self.mutate_expr(expr, &**lhs, JustWrite);
-                self.consume_expr(&**rhs);
+                if self.typer.is_method_call(expr.id) {
+                    if let ast::ExprIndex(ref base, ref idx) = lhs.node {
+                        assert!(self.walk_overloaded_operator(expr, base, vec![idx, rhs],
+                                                              PassArgs::ByValue))
+                    } else {
+                        // XXX(japaric) span_bug
+                        unreachable!()
+                    }
+                } else {
+                    self.mutate_expr(expr, &**lhs, JustWrite);
+                    self.consume_expr(&**rhs);
+                }
             }
 
             ast::ExprCast(ref base, _) => {

@@ -4823,8 +4823,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
         return match expr.node {
-            // `a += b` has a unit result.
-            ast::ExprAssignOp(..) => RvalueStmtExpr,
+            // `a += b` and `a[b] = c` has a unit result.
+            ast::ExprAssignOp(..) | ast::ExprAssign(..) => RvalueStmtExpr,
 
             // the deref method invoked for `*a` always yields an `&T`
             ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,

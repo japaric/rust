@@ -961,6 +961,14 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     fn index_mut<'a>(&'a mut self, index: Idx) -> &'a mut Self::Output;
 }
 
+/// TODO(japaric) example
+#[cfg(not(stage0))]
+#[lang = "index_assign"]
+pub trait IndexAssign<Idx, Rhs> {
+    /// The method for the indexed assignment (`self[index] = rhs`) operation
+    fn index_assign(&mut self, index: Idx, rhs: Rhs);
+}
+
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang = "range_full"]
