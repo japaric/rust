@@ -161,6 +161,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Overloaded augmented assignment `a += b`; RFC 953
     ("augmented_assignments", "1.3.0", Active),
+
+    // Allows overloading the indexed assignment (`a[b] = c`) operation
+    ("indexed_assignment", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -319,6 +322,7 @@ pub enum AttributeType {
 pub struct Features {
     pub unsized_types: bool,
     pub augmented_assignments: bool,
+    pub indexed_assignment: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub visible_private_types: bool,
@@ -344,6 +348,7 @@ impl Features {
         Features {
             unsized_types: false,
             augmented_assignments: false,
+            indexed_assignment: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             visible_private_types: false,
@@ -797,6 +802,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
     Features {
         unsized_types: cx.has_feature("unsized_types"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
+        indexed_assignment: cx.has_feature("indexed_assignment"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         visible_private_types: cx.has_feature("visible_private_types"),

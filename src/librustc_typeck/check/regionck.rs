@@ -601,6 +601,25 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
+        ast::ExprAssign(ref lhs, ref rhs) if has_method_map => {
+            match lhs.node {
+                ast::ExprIndex(ref base, ref idx) => {
+                    constrain_call(rcx, expr, Some(&**base),
+                                   [idx, rhs].iter().map(|&e| &**e), false);
+
+                    // NOTE(japaric) we don't walk `lhs` here because for indexed assignments
+                    // `a[b]` is not an lvalue
+                    rcx.visit_expr(rhs);
+                    rcx.visit_expr(base);
+                    rcx.visit_expr(idx);
+                },
+                _ => {
+                    // XXX(japaric) span bug
+                    unreachable!()
+                }
+            }
+        }
+
         ast::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
                 constrain_call(rcx, expr, Some(&**lhs),

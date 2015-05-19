@@ -285,6 +285,7 @@ lets_do_this! {
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
+    IndexAssignTraitLangItem,        "index_assign",            index_assign_trait;
     RangeStructLangItem,             "range",                   range_struct;
     RangeFromStructLangItem,         "range_from",              range_from_struct;
     RangeToStructLangItem,           "range_to",                range_to_struct;
