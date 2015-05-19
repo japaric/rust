@@ -155,6 +155,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the definition of `const fn` functions.
     ("const_fn", "1.2.0", Active),
+
+    // Allows overloading the indexed assignment (`a[b] = c`) operation
+    ("indexed_assignment", "1.2.0", Active)
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -311,6 +314,7 @@ pub enum AttributeType {
 
 /// A set of features to be used by later passes.
 pub struct Features {
+    pub indexed_assignment: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub visible_private_types: bool,
@@ -334,6 +338,7 @@ pub struct Features {
 impl Features {
     pub fn new() -> Features {
         Features {
+            indexed_assignment: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             visible_private_types: false,
@@ -785,6 +790,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
     // to a single-pass (instead of N calls to `.has_feature`).
 
     Features {
+        indexed_assignment: cx.has_feature("indexed_assignment"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         visible_private_types: cx.has_feature("visible_private_types"),

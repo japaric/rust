@@ -2072,7 +2072,9 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              base_expr: &'tcx ast::Expr,
                              base_ty: Ty<'tcx>,
                              idx_ty: Ty<'tcx>,
-                             lvalue_pref: LvaluePreference)
+                             lvalue_pref: LvaluePreference,
+                             is_assignment: bool,
+                             try_imm_indexing: bool)
                              -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     // FIXME(#18741) -- this is almost but not quite the same as the
@@ -2087,7 +2089,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                lvalue_pref,
                                                |adj_ty, idx| {
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
-                       adj_ty, idx, false, lvalue_pref, idx_ty)
+                       adj_ty, idx, false, lvalue_pref, idx_ty, is_assignment, try_imm_indexing)
     });
 
     if final_mt.is_some() {
@@ -2099,7 +2101,8 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if let ty::ty_vec(element_ty, Some(_)) = ty.sty {
         let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
-                       adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
+                       adjusted_ty, autoderefs, true, lvalue_pref, idx_ty, is_assignment,
+                       try_imm_indexing)
     } else {
         None
     }
@@ -2117,7 +2120,9 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             autoderefs: usize,
                             unsize: bool,
                             lvalue_pref: LvaluePreference,
-                            index_ty: Ty<'tcx>)
+                            index_ty: Ty<'tcx>,
+                            is_assignment: bool,
+                            try_immut_indexing: bool)
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     let tcx = fcx.tcx();
@@ -2131,6 +2136,28 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            index_ty.repr(tcx));
 
     let input_ty = fcx.infcx().next_ty_var();
+
+    // `IndexAssign`
+    if is_assignment {
+        return tcx.lang_items.index_assign_trait().and_then(|trait_did| {
+            let rhs_ty = fcx.infcx().next_ty_var();
+
+            method::lookup_in_trait_adjusted(fcx,
+                                             expr.span,
+                                             Some(&*base_expr),
+                                             token::intern("index_assign"),
+                                             trait_did,
+                                             autoderefs,
+                                             unsize,
+                                             adjusted_ty,
+                                             Some(vec![input_ty, rhs_ty]))
+                .map(|method| {
+                    fcx.inh.method_map.borrow_mut().insert(method_call, method);
+
+                    (input_ty, rhs_ty)
+                })
+        })
+    }
 
     // First, try built-in indexing.
     match (ty::index(adjusted_ty), &index_ty.sty) {
@@ -2161,8 +2188,8 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     };
 
     // Otherwise, fall back to `Index`.
-    let method = match (method, tcx.lang_items.index_trait()) {
-        (None, Some(trait_did)) => {
+    let method = match (try_immut_indexing, method, tcx.lang_items.index_trait()) {
+        (true, None, Some(trait_did)) => {
             method::lookup_in_trait_adjusted(fcx,
                                              expr.span,
                                              Some(&*base_expr),
@@ -2173,7 +2200,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              adjusted_ty,
                                              Some(vec![input_ty]))
         }
-        (method, _) => method,
+        (_, method, _) => method,
     };
 
     // If some lookup succeeds, write callee into table and extract index/element
@@ -3346,24 +3373,118 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, fcx.expr_ty(&**a));
       }
       ast::ExprAssign(ref lhs, ref rhs) => {
-        check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
+        if let ast::ExprIndex(ref base, ref idx) = lhs.node {
+            let lvalue_pref = PreferMutLvalue;
 
-        let tcx = fcx.tcx();
-        if !ty::expr_is_lval(tcx, &**lhs) {
-            span_err!(tcx.sess, expr.span, E0070,
-                "illegal left-hand side expression");
-        }
+            check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);
+            check_expr(fcx, &**idx);
+            check_expr(fcx, &**rhs);
 
-        let lhs_ty = fcx.expr_ty(&**lhs);
-        check_expr_coercable_to_type(fcx, &**rhs, lhs_ty);
-        let rhs_ty = fcx.expr_ty(&**rhs);
+            let base_t = fcx.expr_ty(&**base);
+            let idx_t = fcx.expr_ty(&**idx);
+            let rhs_t = fcx.expr_ty(&**rhs);
 
-        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+            if ty::type_is_error(base_t) || ty::type_is_error(idx_t) || ty::type_is_error(rhs_t) {
+                fcx.write_error(id);
+                fcx.write_error(lhs.id);
+            } else {
+                let base_t = structurally_resolved_type(fcx, lhs.span, base_t);
+                let infcx = fcx.infcx();
 
-        if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
-            fcx.write_error(id);
+                // Try built-in indexing and IndexMut, if something doesn't type check, then
+                // rollback and try IndexAssign
+                let mut impls_index_mut = false;
+
+                if let Ok(element_ty) = infcx.commit_if_ok(|_| {
+                    lookup_indexing(fcx, lhs, base, base_t, idx_t, lvalue_pref, false, false)
+                        .ok_or(())
+                        .and_then(|(index_ty, element_ty)| {
+                            impls_index_mut = true;
+                            try! {
+                                infcx
+                                    .eq_types(false, infer::Misc(lhs.span), idx_t, index_ty)
+                                    .map_err(|_| ())
+                            };
+                            try! {
+                                coercion::mk_assignty(fcx, rhs, rhs_t, element_ty)
+                                    .map_err(|_| ())
+                            };
+                            Ok(element_ty)
+                        })
+                }) {
+                    fcx.write_ty(lhs.id, element_ty);
+
+                    fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+
+                    fcx.write_nil(id);
+                } else {
+                    // remove method call that we won't be using
+                    if impls_index_mut {
+                        fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(lhs.id)).unwrap();
+                    }
+
+                    // Try IndexAssign
+                    if let Some((index_ty, rhs_ty)) = lookup_indexing(fcx, expr, base, base_t,
+                                                                      idx_t, lvalue_pref, true,
+                                                                      false) {
+                        demand::eqtype(fcx, expr.span, index_ty, idx_t);
+                        check_expr_has_type(fcx, rhs, rhs_ty);
+
+                        // NOTE(japaric) use nil here to catch downstream misuses of `lhs`
+                        fcx.write_nil(lhs.id);
+                        fcx.write_nil(id);
+
+                        if !tcx.sess.features.borrow().indexed_assignment {
+                            tcx.sess.span_err(
+                                expr.span,
+                                "overloaded index assignments are not stable");
+                            fileline_help!(
+                                tcx.sess,
+                                expr.span,
+                                "add `#![feature(indexed_assignment)]` to the crate features to \
+                                 enable"
+                            )
+                        }
+                    } else {
+                        fcx.write_error(lhs.id);
+                        fcx.write_error(id);
+
+                        if impls_index_mut {
+                            // TODO(japaric) add a helpful error message here
+                            unimplemented!()
+                        } else {
+                            fcx.type_error_message(
+                                lhs.span,
+                                |actual| {
+                                    format!("cannot mutably index a value of type `{}`",
+                                            actual)
+                                },
+                                base_t,
+                                None);
+                        }
+                    }
+                }
+            }
         } else {
-            fcx.write_nil(id);
+            check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
+
+            let tcx = fcx.tcx();
+            if !ty::expr_is_lval(tcx, &**lhs) {
+                span_err!(tcx.sess, expr.span, E0070,
+                    "illegal left-hand side expression");
+            }
+
+            let lhs_ty = fcx.expr_ty(&**lhs);
+            check_expr_coercable_to_type(fcx, &**rhs, lhs_ty);
+            let rhs_ty = fcx.expr_ty(&**rhs);
+
+            fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
+
+            if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
+                fcx.write_error(id);
+            } else {
+                fcx.write_nil(id);
+            }
         }
       }
       ast::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
@@ -3646,7 +3767,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               fcx.write_ty(id, idx_t);
           } else {
               let base_t = structurally_resolved_type(fcx, expr.span, base_t);
-              match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref) {
+              match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref, false, true) {
                   Some((index_ty, element_ty)) => {
                       let idx_expr_ty = fcx.expr_ty(idx);
                       demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);

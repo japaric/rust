@@ -979,6 +979,35 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprLoop(ref body, _) => {
             controlflow::trans_loop(bcx, expr, &**body)
         }
+        // indexed assignment `a[b] = c`
+        ast::ExprAssign(ref lhs, ref rhs) if bcx.tcx().is_method_call(expr.id) => {
+            match lhs.node {
+                ast::ExprIndex(ref base, ref idx) => {
+                    let rhs_datum = unpack_datum!(bcx, trans(bcx, &**rhs));
+
+                    // NOTE(japaric) lhs is not an lvalue in this case, but we still need to create
+                    // a cleanup scope that covers `base` and `idx`
+                    let cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(),
+                                                                                          lhs.id,
+                                                                                          lhs.span,
+                                                                                          false);
+                    bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
+
+                    let base = unpack_datum!(bcx, trans(bcx, &**base));
+                    let idx_datum = unpack_datum!(bcx, trans(bcx, &**idx));
+
+                    bcx.fcx.pop_and_trans_ast_cleanup_scope(bcx, lhs.id);
+
+                    trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
+                                        vec![(idx_datum, idx.id), (rhs_datum, rhs.id)], None,
+                                        false).bcx
+                },
+                _ => {
+                    // XXX(japaric) span bug
+                    unreachable!()
+                },
+            }
+        },
         ast::ExprAssign(ref dst, ref src) => {
             let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
             let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &**dst, "assign"));

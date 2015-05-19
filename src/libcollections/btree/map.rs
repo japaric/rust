@@ -24,6 +24,8 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator};
 use core::ops::Index;
+#[cfg(not(stage0))]
+use core::ops::{IndexAssign, IndexMut};
 use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 
@@ -946,6 +948,24 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     #[inline]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a, K: Ord, Q: ?Sized, V> IndexMut<&'a Q> for BTreeMap<K, V>
+    where K: Borrow<Q>, Q: Ord
+{
+    #[inline]
+    fn index_mut(&mut self, key: &Q) -> &mut V {
+        self.get_mut(key).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a, K: Ord, V> IndexAssign<K, V> for BTreeMap<K, V> {
+    #[inline]
+    fn index_assign(&mut self, key: K, value: V) {
+        self.insert(key, value);
     }
 }
 

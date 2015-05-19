@@ -1094,9 +1094,9 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             }));
 
             assert_eq!(arg_tys.len(), 1 + rhs.len());
-            for (rhs, rhs_id) in rhs {
+            for ((rhs, rhs_id), i) in rhs.into_iter().zip(1..) {
                 llargs.push(unpack_result!(bcx, {
-                    trans_arg_datum(bcx, arg_tys[1], rhs,
+                    trans_arg_datum(bcx, arg_tys[i], rhs,
                                     arg_cleanup_scope,
                                     if autoref { DoAutorefArg(rhs_id) } else { DontAutorefArg })
                 }));
