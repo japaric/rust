@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // Test that if `A: IndexMut<B, Output=C>` and `A: IndexAssign<B, C>`, then the expression
-// `a[b] = c` will be evaluated using the `IndexMut` trait. In other words, test that the
-// `IndexMut` has higher priority than the `IndexAssign`
+// `a[b] = c` will be evaluated using the `IndexAssign` trait. In other words, test that
+// `IndexAssign` has higher priority than `IndexMut`
 
 #![feature(core)]
 #![feature(indexed_assignment)]
@@ -29,13 +29,13 @@ impl Index<()> for Foo {
 
 impl IndexMut<()> for Foo {
     fn index_mut(&mut self, _: ()) -> &mut () {
-        &mut self.0
+        unreachable!()
     }
 }
 
 impl IndexAssign<(), ()> for Foo {
     fn index_assign(&mut self, _: (), _: ()) {
-        unreachable!()
+        self.0 = ();
     }
 }
 

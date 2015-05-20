@@ -3388,65 +3388,65 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let base_t = structurally_resolved_type(fcx, lhs.span, base_t);
                 let infcx = fcx.infcx();
 
-                // Try built-in indexing and IndexMut, if something doesn't type check, then
-                // rollback and try IndexAssign
-                let mut impls_index_mut = false;
+                // Try IndexAssign, if something doesn't type check, then rollback and try
+                // built-in indexing and IndexMut
+                let mut impls_index_assign = false;
 
-                if let Ok(element_ty) = infcx.commit_if_ok(|_| {
-                    lookup_indexing(fcx, lhs, base, base_t, idx_t, lvalue_pref, false, false)
+                if let Ok(_) = infcx.commit_if_ok(|_| {
+                    lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref, true, false)
                         .ok_or(())
-                        .and_then(|(index_ty, element_ty)| {
-                            impls_index_mut = true;
+                        .and_then(|(index_ty, rhs_ty)| {
+                            impls_index_assign = true;
                             try! {
                                 infcx
                                     .eq_types(false, infer::Misc(lhs.span), idx_t, index_ty)
                                     .map_err(|_| ())
                             };
                             try! {
-                                coercion::mk_assignty(fcx, rhs, rhs_t, element_ty)
+                                infcx
+                                    .eq_types(false, infer::Misc(rhs.span), rhs_t, rhs_ty)
                                     .map_err(|_| ())
                             };
-                            Ok(element_ty)
+                            Ok(())
                         })
                 }) {
-                    fcx.write_ty(lhs.id, element_ty);
-
-                    fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
-
+                    // NOTE(japaric) use nil here to catch downstream misuses of `lhs`
+                    fcx.write_nil(lhs.id);
                     fcx.write_nil(id);
+
+                    if !tcx.sess.features.borrow().indexed_assignment {
+                        tcx.sess.span_err(
+                            expr.span,
+                            "overloaded index assignments are not stable");
+                        fileline_help!(
+                            tcx.sess,
+                            expr.span,
+                            "add `#![feature(indexed_assignment)]` to the crate features to \
+                             enable"
+                        )
+                    }
                 } else {
                     // remove method call that we won't be using
-                    if impls_index_mut {
-                        fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(lhs.id)).unwrap();
+                    if impls_index_assign {
+                        fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(expr.id)).unwrap();
                     }
 
-                    // Try IndexAssign
-                    if let Some((index_ty, rhs_ty)) = lookup_indexing(fcx, expr, base, base_t,
-                                                                      idx_t, lvalue_pref, true,
-                                                                      false) {
+                    // Try built-in indexing and IndexMut
+                    if let Some((index_ty, element_ty)) = lookup_indexing(fcx, lhs, base, base_t,
+                                                                          idx_t, lvalue_pref,
+                                                                          false, false) {
                         demand::eqtype(fcx, expr.span, index_ty, idx_t);
-                        check_expr_has_type(fcx, rhs, rhs_ty);
+                        demand::coerce(fcx, rhs.span, element_ty, rhs);
 
-                        // NOTE(japaric) use nil here to catch downstream misuses of `lhs`
-                        fcx.write_nil(lhs.id);
                         fcx.write_nil(id);
+                        fcx.write_ty(lhs.id, element_ty);
 
-                        if !tcx.sess.features.borrow().indexed_assignment {
-                            tcx.sess.span_err(
-                                expr.span,
-                                "overloaded index assignments are not stable");
-                            fileline_help!(
-                                tcx.sess,
-                                expr.span,
-                                "add `#![feature(indexed_assignment)]` to the crate features to \
-                                 enable"
-                            )
-                        }
+                        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
                     } else {
-                        fcx.write_error(lhs.id);
                         fcx.write_error(id);
+                        fcx.write_error(lhs.id);
 
-                        if impls_index_mut {
+                        if impls_index_assign {
                             // TODO(japaric) add a helpful error message here
                             unimplemented!()
                         } else {
