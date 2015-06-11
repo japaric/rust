@@ -2358,9 +2358,40 @@ impl<'a> Parser<'a> {
               // Could be either an index expression or a slicing expression.
               token::OpenDelim(token::Bracket) => {
                 try!(self.bump());
-                let ix = try!(self.parse_expr_nopanic());
-                hi = self.span.hi;
-                try!(self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket)));
+                let mut es = vec![];
+                let mut trailing_comma = false;
+                while self.token != token::CloseDelim(token::Bracket) {
+                    es.push(try!(self.parse_expr_nopanic()));
+                    try!(self.commit_expr(&**es.last().unwrap(), &[],
+                                     &[token::Comma, token::CloseDelim(token::Bracket)]));
+                    if self.check(&token::Comma) {
+                        trailing_comma = true;
+
+                        try!(self.bump());
+                    } else {
+                        trailing_comma = false;
+                        break;
+                    }
+                }
+                try!(self.bump());
+
+                if trailing_comma {
+                    // TODO(japaric) raise an error here, trailing commas are not allowed
+                    panic!()
+                }
+
+                if es.len() == 0 {
+                    // TODO(japaric) raise an error here, empty index `x[]` is not allowed
+                    panic!()
+                }
+
+                hi = self.last_span.hi;
+                let ix = if es.len() == 1 {
+                    es.into_iter().nth(0).unwrap()
+                } else {
+                    // TODO(japaric) enforce feature gate here
+                    self.mk_expr(lo, hi, ExprTup(es))
+                };
                 let index = self.mk_index(e, ix);
                 e = self.mk_expr(lo, hi, index)
               }
