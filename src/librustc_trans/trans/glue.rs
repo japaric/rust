@@ -446,52 +446,36 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
 
-    // Only drop the value when it ... well, we used to check for
-    // non-null, (and maybe we need to continue doing so), but we now
-    // must definitely check for special bit-patterns corresponding to
-    // the special dtor markings.
-
-    let inttype = Type::int(bcx.ccx());
-    let dropped_pattern = C_integral(inttype, adt::dtor_done_usize(bcx.fcx.ccx) as u64, false);
-
     match t.sty {
         ty::TyBox(content_ty) => {
-            // Support for TyBox is built-in and its drop glue is
-            // special. It may move to library and have Drop impl. As
-            // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
-            if !type_is_sized(bcx.tcx(), content_ty) {
-                let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                let llbox = Load(bcx, llval);
-                let llbox_as_usize = PtrToInt(bcx, llbox, Type::int(bcx.ccx()));
-                let drop_flag_not_dropped_already =
-                    ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
-                with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
-                    let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
-                    let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
-                    let info = Load(bcx, info);
-                    let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
 
-                    // `Box<ZeroSizeType>` does not allocate.
-                    let needs_free = ICmp(bcx,
-                                          llvm::IntNE,
-                                          llsize,
-                                          C_uint(bcx.ccx(), 0u64),
-                                          DebugLoc::None);
-                    with_cond(bcx, needs_free, |bcx| {
-                        trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
-                    })
-                })
-            } else {
-                let llval = v0;
-                let llbox = Load(bcx, llval);
-                let llbox_as_usize = PtrToInt(bcx, llbox, inttype);
-                let drop_flag_not_dropped_already =
-                    ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
-                with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
-                    let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
-                    trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
-                })
+            let tcx = bcx.tcx();
+            let class_did = tcx.lang_items.owned_box().unwrap();
+            match ty::ty_dtor(tcx, class_did) {
+                // Similar to trans_struct_drop, without the cleanup
+                ty::TraitDtor(dtor_did, false) => {
+                    let ref substs = Substs::new_type(vec![content_ty], vec![]);
+
+                    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t, class_did, substs);
+
+                    Call(bcx,
+                         dtor_addr,
+                         &[v0],
+                         None,
+                         DebugLoc::None);
+
+                    bcx
+                },
+                ty::TraitDtor(_, true) => {
+                    // FIXME(japaric) span bug
+                    panic!("found drop flag")
+                },
+                ty::NoDtor => {
+                    // FIXME(japaric) span bug
+                    panic!("missing destructor")
+                },
+
             }
         }
         ty::TyStruct(did, substs) | ty::TyEnum(did, substs) => {

@@ -12,7 +12,7 @@ use check::regionck::{self, Rcx};
 
 use middle::infer;
 use middle::region;
-use middle::subst::{self, Subst};
+use middle::subst::{self, Subst, Substs};
 use middle::ty::{self, Ty};
 
 use syntax::ast;
@@ -40,6 +40,24 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
                          ty: dtor_self_type } = ty::lookup_item_type(tcx, drop_impl_did);
     let dtor_predicates = ty::lookup_predicates(tcx, drop_impl_did);
     match dtor_self_type.sty {
+        // FIXME(japaric) proper check
+        ty::TyBox(..) => Ok(()),
+        //ty::TyBox(content_ty) => {
+            //let self_type_did = tcx.lang_items.owned_box().unwrap();
+            //let ref self_to_impl_substs = Substs::new_type(vec![content_ty], vec![]);
+
+            //try!(ensure_drop_params_and_item_params_correspond(tcx,
+                                                               //drop_impl_did,
+                                                               //dtor_generics,
+                                                               //&dtor_self_type,
+                                                               //self_type_did));
+
+            //ensure_drop_predicates_are_implied_by_item_defn(tcx,
+                                                            //drop_impl_did,
+                                                            //&dtor_predicates,
+                                                            //self_type_did,
+                                                            //self_to_impl_substs)
+        //}
         ty::TyEnum(self_type_did, self_to_impl_substs) |
         ty::TyStruct(self_type_did, self_to_impl_substs) |
         ty::TyClosure(self_type_did, self_to_impl_substs) => {

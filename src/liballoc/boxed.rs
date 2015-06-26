@@ -65,6 +65,11 @@ use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ptr::{Unique};
 use core::raw::{TraitObject};
 
+#[cfg(not(stage0))]
+use core::intrinsics;
+#[cfg(not(stage0))]
+use heap;
+
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
 ///
@@ -91,7 +96,8 @@ pub const HEAP: () = ();
 #[lang = "owned_box"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[fundamental]
-pub struct Box<T>(Unique<T>);
+#[unsafe_no_drop_flag]
+pub struct Box<T: ?Sized>(Unique<T>);
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then moves `x` into it.
@@ -219,6 +225,27 @@ impl<T: Clone> Clone for Box<T> {
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {
         (**self).clone_from(&(**source));
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: ?Sized> Drop for Box<T> {
+    fn drop(&mut self) {
+        unsafe {
+            let ptr: *mut T = mem::transmute_copy(self);
+
+            if !(ptr as *const ()).is_null() && ptr as *const () as usize != mem::POST_DROP_USIZE {
+                intrinsics::drop_in_place(ptr);
+
+                let size = mem::size_of_val(&*ptr);
+
+                if size != 0 {
+                    heap::deallocate(ptr as *mut u8,
+                                     size,
+                                     mem::min_align_of_val(&*ptr))
+                }
+            }
+        }
     }
 }
 
