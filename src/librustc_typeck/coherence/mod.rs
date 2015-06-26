@@ -314,6 +314,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let self_type = ty::lookup_item_type(tcx, impl_did);
             match self_type.ty.sty {
+                ty::TyBox(..) => {
+                    let box_def_id = tcx.lang_items.owned_box().unwrap();
+
+                    tcx.destructor_for_type
+                       .borrow_mut()
+                       .insert(box_def_id, method_def_id.def_id());
+                    tcx.destructors
+                       .borrow_mut()
+                       .insert(method_def_id.def_id());
+                },
                 ty::TyEnum(type_def_id, _) |
                 ty::TyStruct(type_def_id, _) |
                 ty::TyClosure(type_def_id, _) => {
