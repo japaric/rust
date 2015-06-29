@@ -1686,7 +1686,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::TyStr | ty::TySlice(_) => {
+            ty::TyStr | ty::TySlice(_) | ty::TyUnsized(..) => {
                 match bound {
                     ty::BoundSync | ty::BoundSend => {
                         self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1884,6 +1884,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
                      .map(|f| f.mt.ty)
                      .collect())
+            }
+
+            // Pass FatPtr
+            ty::TyUnsized(..) => {
+                unimplemented!()
             }
 
             ty::TyEnum(def_id, substs) => {

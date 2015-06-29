@@ -235,7 +235,9 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
-            ty::TyEnum(did, _) | ty::TyStruct(did, _) => ast_util::is_local(did),
+            ty::TyEnum(did, _) | ty::TyStruct(did, _) | ty::TyUnsized(did, _) => {
+                ast_util::is_local(did)
+            },
 
             ty::TyTrait(ref tr) => ast_util::is_local(tr.principal_def_id()),
 

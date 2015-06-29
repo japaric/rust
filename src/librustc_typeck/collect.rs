@@ -923,13 +923,37 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             }
 
             if let &Some(ref ast_trait_ref) = opt_trait_ref {
+                let trait_ref = astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                                                                    &ExplicitRscope,
+                                                                    ast_trait_ref,
+                                                                    Some(selfty));
+
                 tcx.impl_trait_refs.borrow_mut().insert(
                     local_def(it.id),
-                    Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
-                                                             &ExplicitRscope,
-                                                             ast_trait_ref,
-                                                             Some(selfty)))
-                        );
+                    Some(trait_ref));
+
+                if Some(trait_ref.def_id) == tcx.lang_items.unsized_trait() {
+                    if let ty::TyUnsized(def_id, _) = selfty.sty {
+                        let impl_items = impl_items.iter().map(|impl_item| {
+                            match impl_item.node {
+                                ast::MethodImplItem(..) => {
+                                    ty::MethodTraitItemId(local_def(impl_item.id))
+                                },
+                                ast::TypeImplItem(..) => {
+                                    ty::TypeTraitItemId(local_def(impl_item.id))
+                                },
+                                // XXX(japaric) span_bug
+                                _ => unreachable!(),
+                            }
+                        }).collect();
+
+                        tcx.unsized_impl_items.borrow_mut().insert(def_id, impl_items);
+                    } else {
+                        tcx.sess.span_err(
+                            it.span,
+                            "Unsized trait can only be implemented on unsized types")
+                    }
+                }
             } else {
                 tcx.impl_trait_refs.borrow_mut().insert(local_def(it.id), None);
             }
@@ -1454,6 +1478,21 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty = ccx.icx(generics).to_ty(&ExplicitRscope, &**t);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
+        ast::ItemUnsizedTy(ref generics) => {
+            // XXX(japaric) can we move this feature check earlier in the pipeline?
+            if !tcx.sess.features.borrow().unsized_types {
+                tcx.sess.span_err(it.span, "custom unsized types are experimental");
+                fileline_help!(
+                    tcx.sess,
+                    it.span,
+                    "add `#![unsized_types]` to the crate to enable");
+            }
+
+            let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
+            let substs = mk_item_substs(ccx, &ty_generics);
+            let t = ty::mk_unsized(tcx, local_def(it.id), tcx.mk_substs(substs));
+            ty::TypeScheme { ty: t, generics: ty_generics }
+        }
         ast::ItemEnum(_, ref generics) => {
             // Create a new generic polytype.
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
@@ -1499,6 +1538,9 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty_generic_predicates_for_fn(ccx, ast_generics, &ty::GenericPredicates::empty())
         }
         ast::ItemTy(_, ref generics) => {
+            ty_generic_predicates_for_type_or_impl(ccx, generics)
+        }
+        ast::ItemUnsizedTy(ref generics) => {
             ty_generic_predicates_for_type_or_impl(ccx, generics)
         }
         ast::ItemEnum(_, ref generics) => {

@@ -266,6 +266,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(&**typ);
             visitor.visit_generics(type_parameters)
         }
+        ItemUnsizedTy(ref type_parameters) => {
+            visitor.visit_generics(type_parameters)
+        }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
             walk_enum_def(visitor, enum_definition, type_parameters)

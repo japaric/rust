@@ -88,6 +88,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         }
         ty::TyEnum(_, ref substs) |
         ty::TyStruct(_, ref substs) |
+        ty::TyUnsized(_, ref substs) |
         ty::TyClosure(_, ref substs) => {
             push_reversed(stack, substs.types.as_slice());
         }

@@ -70,7 +70,7 @@ use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
 use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUnsizedTy, ItemUse};
 use syntax::ast::{Local, MethodImplItem, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
 use syntax::ast::{PatRange, PatStruct, Path, PrimTy};
@@ -1800,6 +1800,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match item.node {
             ItemEnum(_, ref generics) |
             ItemTy(_, ref generics) |
+            ItemUnsizedTy(ref generics) |
             ItemStruct(_, ref generics) => {
                 self.check_if_primitive_type_name(name, item.span);
 

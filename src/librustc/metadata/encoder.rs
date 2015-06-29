@@ -1130,6 +1130,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
       }
+      ast::ItemUnsizedTy(..) => {
+          // TODO(japaric) metadata encoding
+      }
       ast::ItemEnum(ref enum_definition, _) => {
         add_to_index(item, rbml_w, index);
 

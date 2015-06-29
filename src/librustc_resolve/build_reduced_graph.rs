@@ -39,7 +39,7 @@ use syntax::ast::{DeclItem, DefId};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic};
 use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUnsizedTy, ItemUse};
 use syntax::ast::{Name, NamedField, NodeId};
 use syntax::ast::{PathListIdent, PathListMod, Public};
 use syntax::ast::StmtDecl;
@@ -434,7 +434,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemTy(..) => {
+            ItemTy(..) | ItemUnsizedTy(..) => {
                 let name_bindings =
                     self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
 

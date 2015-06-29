@@ -60,6 +60,7 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
         //}
         ty::TyEnum(self_type_did, self_to_impl_substs) |
         ty::TyStruct(self_type_did, self_to_impl_substs) |
+        ty::TyUnsized(self_type_did, self_to_impl_substs) |
         ty::TyClosure(self_type_did, self_to_impl_substs) => {
             try!(ensure_drop_params_and_item_params_correspond(tcx,
                                                                drop_impl_did,
@@ -411,7 +412,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
         let dtor_kind = match typ.sty {
             ty::TyEnum(def_id, _) |
-            ty::TyStruct(def_id, _) => {
+            ty::TyStruct(def_id, _) |
+            ty::TyUnsized(def_id, _) => {
                 match destructor_for_type.get(&def_id) {
                     Some(def_id) => DtorKind::KnownDropMethod(*def_id),
                     None => DtorKind::PureRecur,

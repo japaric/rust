@@ -281,6 +281,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
             ty::TyEnum(did, _) |
             ty::TyStruct(did, _) |
+            ty::TyUnsized(did, _) |
             ty::TyClosure(did, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }

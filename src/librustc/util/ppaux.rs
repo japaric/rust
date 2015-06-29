@@ -15,7 +15,7 @@ use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty};
-use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
+use middle::ty::{TyBool, TyChar, TyStruct, TyEnum, TyUnsized};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
@@ -713,7 +713,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyEnum(did, substs) | TyStruct(did, substs) => {
+            TyEnum(did, substs) | TyStruct(did, substs) | TyUnsized(did, substs) => {
                 parameterized(f, substs, did, &[],
                               |tcx| ty::lookup_item_type(tcx, did).generics)
             }

@@ -638,6 +638,10 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let substs = substs.fold_with(this);
             ty::TyStruct(did, this.tcx().mk_substs(substs))
         }
+        ty::TyUnsized(did, ref substs) => {
+            let substs = substs.fold_with(this);
+            ty::TyUnsized(did, this.tcx().mk_substs(substs))
+        }
         ty::TyClosure(did, ref substs) => {
             let s = substs.fold_with(this);
             ty::TyClosure(did, this.tcx().mk_substs(s))

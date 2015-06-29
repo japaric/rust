@@ -21,6 +21,27 @@
 use clone::Clone;
 use marker::Copy;
 use mem;
+#[cfg(not(stage0))]
+use fmt;
+
+#[cfg(not(stage0))]
+/// A fat pointer
+pub struct FatPtr<D, I> {
+    /// The data pointer
+    pub data: *mut D,
+    /// Extra information
+    pub info: I,
+}
+
+#[cfg(not(stage0))]
+impl<D, I> fmt::Debug for FatPtr<D, I> where I: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FatPtr")
+            .field("data", &self.data)
+            .field("info", &self.info)
+            .finish()
+    }
+}
 
 /// The representation of a slice like `&[T]`.
 ///

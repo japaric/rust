@@ -935,6 +935,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemMod(..) => "mod",
                 ItemForeignMod(..) => "foreign mod",
                 ItemTy(..) => "ty",
+                ItemUnsizedTy(..) => "unsized ty",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
                 ItemTrait(..) => "trait",

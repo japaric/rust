@@ -116,6 +116,10 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
+            ty::TyUnsized(..) => {
+                // XXX(japaric)
+            }
+
             ty::TyArray(t, _) |
             ty::TySlice(t) |
             ty::TyRawPtr(ty::mt { ty: t, .. }) |

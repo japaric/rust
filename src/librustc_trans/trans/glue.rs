@@ -37,7 +37,7 @@ use trans::foreign;
 use trans::inline;
 use trans::machine::*;
 use trans::monomorphize;
-use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
+use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of, arg_type_of};
 use trans::type_::Type;
 
 use arena::TypedArena;
@@ -417,6 +417,67 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
                                unsized_align);
             (size, align)
         }
+        ty::TyUnsized(did, substs) => {
+            let tcx = bcx.tcx();
+            let ccx = bcx.ccx();
+
+            let (size_of, align_of) = ty::fat_ptr_methods(tcx, did);
+
+            let substs = tcx.mk_substs(Substs::erased(substs.types.clone()));
+
+            let size_of = inline::maybe_instantiate_inline(ccx, size_of);
+            let size_of = monomorphize::monomorphic_fn(ccx, size_of, substs, None).0;
+
+            let info_ty = ty::fat_ptr_info(tcx, did, substs);
+
+            let info_llty = type_of(ccx, info_ty);
+            let info_arg_llty = arg_type_of(ccx, info_ty);
+
+            // As an optimization types like `(i32, i32, ZeroSizeType)` are actually passed as
+            // `i64` at call site, adjust the `info` value if necessary
+            let info = if info_llty != info_arg_llty {
+                Load(bcx, BitCast(bcx, info, info_arg_llty.ptr_to()))
+            } else if ty::type_is_scalar(info_ty) {
+                // Additionally, if the info field is scalar pass it by value, otherwise pass it be
+                // reference -- that's what the monomorphized function expects
+                Load(bcx, info)
+            } else {
+                info
+            };
+
+            let size = Call(bcx, size_of, &[info], None, DebugLoc::None);
+
+            let (def_id, substs) = if let Some(source_id) = ty::provided_source(tcx, align_of) {
+                // Monomorphize a default method implementation. Same procedure as in
+                // `callee::trans_fn_ref_with_substs`
+
+                let impl_id = ty::impl_or_trait_item(tcx, align_of).container().id();
+
+                if let ty::MethodTraitItem(method) = ty::impl_or_trait_item(tcx, source_id) {
+                    let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
+
+                    let first_subst =
+                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
+                        .erase_regions();
+
+                    let substs = tcx.mk_substs(first_subst.subst(tcx, &substs));
+
+                    (source_id, substs)
+                } else {
+                    // FIXME(japaric) span_bug
+                    unreachable!()
+                }
+            } else {
+                (align_of, substs)
+            };
+
+            let def_id = inline::maybe_instantiate_inline(ccx, def_id);
+            let align_of = monomorphize::monomorphic_fn(ccx, def_id, substs, None).0;
+
+            let align = Call(bcx, align_of, &[info], None, DebugLoc::None);
+
+            (size, align)
+        },
         ty::TyTrait(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
@@ -520,6 +581,25 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                  None,
                  DebugLoc::None);
             bcx
+        }
+        ty::TyUnsized(class_did, substs) => {
+            assert!(!skip_dtor);
+
+            let tcx = bcx.tcx();
+            match ty::ty_dtor(tcx, class_did) {
+                // Similar to trans_struct_drop, without the cleanup
+                ty::TraitDtor(dtor_did, _) => {
+                    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t, class_did, substs);
+
+                    Call(bcx, dtor_addr, &[v0], None, DebugLoc::None);
+
+                    bcx
+                },
+                ty::NoDtor => {
+                    // FIXME(japaric) span bug
+                    panic!("missing destructor")
+                },
+            }
         }
         _ => {
             if bcx.fcx.type_needs_drop(t) {

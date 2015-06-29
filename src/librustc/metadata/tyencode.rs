@@ -143,6 +143,9 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
+        ty::TyUnsized(..) => {
+            // TODO(japaric) encode
+        }
         ty::TyClosure(def, substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);

@@ -53,6 +53,25 @@ pub trait Sized {
     // Empty.
 }
 
+/// An unsized type (like `[T]` or `str`)
+#[cfg(not(stage0))]
+#[lang = "unsized"]
+pub trait Unsized {
+    /// The type of the data pointer
+    type Data: Sized;
+    /// Extra information
+    type Info: Copy + Sized;
+
+    /// Definition of the `mem::min_align_of_val` intrinsic
+    #[inline]
+    fn min_align_of_val(Self::Info) -> usize {
+        ::mem::min_align_of::<Self::Data>()
+    }
+
+    /// Definition of the `mem::size_of_val` intrinsic
+    fn size_of_val(Self::Info) -> usize;
+}
+
 /// Types that can be "unsized" to a dynamically sized type.
 #[unstable(feature = "unsize")]
 #[lang="unsize"]

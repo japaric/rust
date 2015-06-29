@@ -703,6 +703,9 @@ pub struct ctxt<'tcx> {
     /// way to do it.
     pub impl_items: RefCell<DefIdMap<Vec<ImplOrTraitItemId>>>,
 
+    /// Maps the DefId of an unsized type to its Unsized implementation
+    pub unsized_impl_items: RefCell<DefIdMap<Vec<ImplOrTraitItemId>>>,
+
     /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     /// present in this set can be warned about.
     pub used_unsafe: RefCell<NodeSet>,
@@ -1115,7 +1118,7 @@ impl<'tcx> ctxt<'tcx> {
         sty_debug_print!(
             self,
             TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyBareFn, TyTrait,
-            TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
+            TyStruct, TyUnsized, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -1587,6 +1590,9 @@ pub enum TypeVariants<'tcx> {
     ///
     /// See warning about substitutions for enumerated types.
     TyStruct(DefId, &'tcx Substs<'tcx>),
+
+    /// An unsized type, defined with `unsized type`
+    TyUnsized(DefId, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -3083,6 +3089,7 @@ pub fn with_ctxt<'tcx, F, R>(s: Session,
         destructors: RefCell::new(DefIdSet()),
         inherent_impls: RefCell::new(DefIdMap()),
         impl_items: RefCell::new(DefIdMap()),
+        unsized_impl_items: RefCell::new(DefIdMap()),
         used_unsafe: RefCell::new(NodeSet()),
         used_mut_nodes: RefCell::new(NodeSet()),
         populated_external_types: RefCell::new(DefIdSet()),
@@ -3293,7 +3300,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_TY_INFER)
             }
 
-            &TyEnum(_, substs) | &TyStruct(_, substs) => {
+            &TyEnum(_, substs) | &TyStruct(_, substs) | &TyUnsized(_, substs) => {
                 self.add_substs(substs);
             }
 
@@ -3443,6 +3450,11 @@ pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, m: ast::Mutability) 
 pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, TyEnum(did, substs))
+}
+
+pub fn mk_unsized<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    // take a copy of substs so that we own the vectors inside
+    mk_t(cx, TyUnsized(did, substs))
 }
 
 pub fn mk_uniq<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, TyBox(ty)) }
@@ -4107,6 +4119,14 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
+            TyUnsized(did, _) => {
+                if ty::has_dtor(cx, did) {
+                    TC::OwnsDtor
+                } else {
+                    TC::None
+                }
+            }
+
             TyClosure(did, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                 let param_env = ty::empty_parameter_environment(cx);
@@ -4282,7 +4302,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
         }) => Some(true),
 
         TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
-        TyClosure(..) | TyEnum(..) | TyStruct(..) |
+        TyClosure(..) | TyEnum(..) | TyStruct(..)  | TyUnsized(..) |
         TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
     }.unwrap_or_else(|| !type_impls_bound(Some(param_env),
                                           param_env.tcx,
@@ -4328,7 +4348,7 @@ fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'t
         TyBox(..) | TyRawPtr(..) | TyRef(..) | TyBareFn(..) |
         TyArray(..) | TyTuple(..) | TyClosure(..) => Some(true),
 
-        TyStr | TyTrait(..) | TySlice(_) => Some(false),
+        TyUnsized(..) | TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
         TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
         TyInfer(..) | TyError => None
@@ -4412,6 +4432,10 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
                 seen.pop().unwrap();
                 r
+            }
+
+            TyUnsized(..) => {
+                false
             }
 
             TyError |
@@ -5323,6 +5347,9 @@ pub fn ty_sort_string(cx: &ctxt, ty: Ty) -> String {
         }
         TyStruct(id, _) => {
             format!("struct `{}`", item_path_str(cx, id))
+        }
+        TyUnsized(id, _) => {
+            format!("unsized type `{}`", item_path_str(cx, id))
         }
         TyClosure(..) => "closure".to_string(),
         TyTuple(_) => "tuple".to_string(),
@@ -6361,6 +6388,55 @@ pub fn is_tuple_struct(cx: &ctxt, did: ast::DefId) -> bool {
     !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
 }
 
+fn fat_ptr_repr<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId) -> (Ty<'tcx>, Ty<'tcx>) {
+    let mut data = None;
+    let mut info = None;
+
+    for item in cx.unsized_impl_items.borrow().get(&did).unwrap() {
+        if let &TypeTraitItemId(did) = item {
+            if let &TypeTraitItem(ref assoc_ty) = cx.impl_or_trait_items.borrow().get(&did).unwrap() {
+                if assoc_ty.name == token::intern("Data") {
+                    data = assoc_ty.ty;
+                } else if assoc_ty.name == token::intern("Info") {
+                    info = assoc_ty.ty;
+                }
+            }
+        }
+    }
+
+    (data.unwrap(), info.unwrap())
+}
+
+pub fn fat_ptr_data<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tcx>) -> Ty<'tcx> {
+    fat_ptr_repr(cx, did).0.subst(cx, substs)
+}
+
+pub fn fat_ptr_info<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tcx>) -> Ty<'tcx> {
+    fat_ptr_repr(cx, did).1.subst(cx, substs)
+}
+
+pub fn fat_ptr_methods<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId) -> (ast::DefId, ast::DefId) {
+    let mut size_of_val = None;
+    let mut min_align_of_val = None;
+
+    for item in cx.unsized_impl_items.borrow().get(&did).unwrap() {
+        if let &MethodTraitItemId(did) = item {
+            if let &MethodTraitItem(ref method) = cx.impl_or_trait_items.borrow().get(&did).unwrap() {
+                if method.name == token::intern("size_of_val") {
+                    size_of_val = Some(did)
+                } else if method.name == token::intern("min_align_of_val") {
+                    // Prefer the `impl` definition rather than the default `trait` definition
+                    if min_align_of_val.is_none() || ty::provided_source(cx, did).is_none() {
+                        min_align_of_val = Some(did)
+                    }
+                }
+            }
+        }
+    }
+
+    (size_of_val.unwrap(), min_align_of_val.unwrap())
+}
+
 // Returns a list of fields corresponding to the struct's items. trans uses
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tcx>)
@@ -6930,6 +7006,10 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     did(state, data.trait_ref.def_id);
                     hash!(token::get_name(data.item_name));
                 }
+                TyUnsized(d, _) => {
+                    byte!(24);
+                    did(state, d);
+                }
             }
             true
         });
@@ -7196,7 +7276,8 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                 accumulator.push_all(t.principal.0.substs.regions().as_slice());
             }
             TyEnum(_, substs) |
-            TyStruct(_, substs) => {
+            TyStruct(_, substs) |
+            TyUnsized(_, substs) => {
                 accum_substs(accumulator, substs);
             }
             TyClosure(_, substs) => {

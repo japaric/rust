@@ -761,6 +761,11 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         let pty_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, &generics.ty_params, pty_ty);
       }
+      ast::ItemUnsizedTy(ref generics) => {
+        // XXX(japaric) This check should happen in the `impl Unsized for Ty`
+        let pty_ty = ty::node_id_to_type(ccx.tcx, it.id);
+        check_bounds_are_used(ccx, it.span, &generics.ty_params, pty_ty);
+      }
       ast::ItemForeignMod(ref m) => {
         if m.abi == abi::RustIntrinsic {
             for item in &m.items {
@@ -5216,6 +5221,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                     tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
                                     param(ccx, 0))], tcx.types.u64),
+
+            "unchecked_transmute" => (2, vec![param(ccx, 0)], param(ccx, 1)),
 
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,

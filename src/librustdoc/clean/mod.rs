@@ -1671,7 +1671,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
+            // FIXME(japaric) unsized types should be in their own category
             ty::TyStruct(did, substs) |
+            ty::TyUnsized(did, substs) |
             ty::TyEnum(did, substs) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();

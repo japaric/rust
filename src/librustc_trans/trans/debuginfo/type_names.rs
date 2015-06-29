@@ -60,6 +60,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, def_id, qualified, output);
             push_type_params(cx, substs, output);
         },
+        // XXX(japaric)
+        ty::TyUnsized(..) => unimplemented!(),
         ty::TyTuple(ref component_types) => {
             output.push('(');
             for &component_type in component_types {

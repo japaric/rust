@@ -917,6 +917,19 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer ibox
             }
+            ast::ItemUnsizedTy(ref params) => {
+                try!(self.ibox(indent_unit));
+                try!(self.ibox(0));
+                try!(self.word_nbsp(&visibility_qualified(item.vis, "unsized")));
+                try!(self.word_nbsp("type"));
+                try!(self.print_ident(item.ident));
+                try!(self.print_generics(params));
+                try!(self.end()); // end the inner ibox
+
+                try!(self.print_where_clause(&params.where_clause));
+                try!(word(&mut self.s, ";"));
+                try!(self.end()); // end the outer ibox
+            }
             ast::ItemEnum(ref enum_definition, ref params) => {
                 try!(self.print_enum_def(
                     enum_definition,

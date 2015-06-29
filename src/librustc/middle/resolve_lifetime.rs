@@ -132,6 +132,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_item(this, item);
                 }
                 ast::ItemTy(_, ref generics) |
+                ast::ItemUnsizedTy(ref generics) |
                 ast::ItemEnum(_, ref generics) |
                 ast::ItemStruct(_, ref generics) |
                 ast::ItemTrait(_, ref generics, _, _) |

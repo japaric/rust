@@ -311,6 +311,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.typedefs.push(t);
             },
+            // XXX(japaric) unsized types should have their own category
+            ast::ItemUnsizedTy(ref gen) => {
+                let t = Enum {
+                    vis: item.vis,
+                    stab: self.stability(item.id),
+                    variants: vec![],
+                    generics: gen.clone(),
+                    attrs: item.attrs.clone(),
+                    id: item.id,
+                    whence: item.span,
+                    name: name,
+                };
+                om.enums.push(t);
+            }
             ast::ItemStatic(ref ty, ref mut_, ref exp) => {
                 let s = Static {
                     type_: ty.clone(),

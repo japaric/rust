@@ -31,7 +31,7 @@ use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
-use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
+use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemUnsizedTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
@@ -5100,6 +5100,15 @@ impl<'a> Parser<'a> {
         Ok((ident, ItemTy(ty, tps), None))
     }
 
+    /// Parse unsized type Foo<A, B>;
+    fn parse_item_unsized_type(&mut self) -> PResult<ItemInfo> {
+        let ident = try!(self.parse_ident());
+        let mut tps = try!(self.parse_generics());
+        tps.where_clause = try!(self.parse_where_clause());
+        try!(self.expect(&token::Semi));
+        Ok((ident, ItemUnsizedTy(tps), None))
+    }
+
     /// Parse a structure-like enum variant definition
     /// this should probably be renamed or refactored...
     fn parse_struct_def(&mut self) -> PResult<P<StructDef>> {
@@ -5430,6 +5439,20 @@ impl<'a> Parser<'a> {
         if try!(self.eat_keyword(keywords::Type) ){
             // TYPE ITEM
             let (ident, item_, extra_attrs) = try!(self.parse_item_type());
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if try!(self.eat_keyword(keywords::Unsized) ){
+            try!(self.expect_keyword(keywords::Type));
+
+            // UNSIZED TYPE ITEM
+            let (ident, item_, extra_attrs) = try!(self.parse_item_unsized_type());
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

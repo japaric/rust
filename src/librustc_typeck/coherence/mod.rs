@@ -24,7 +24,7 @@ use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use middle::ty::{TyParam, TypeScheme, TyRawPtr};
-use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
+use middle::ty::{TyRef, TyStruct, TyUnsized, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
 use middle::ty::TyProjection;
@@ -56,7 +56,8 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                                   -> Option<DefId> {
     match ty.sty {
         TyEnum(def_id, _) |
-        TyStruct(def_id, _) => {
+        TyStruct(def_id, _) |
+        TyUnsized(def_id, _) => {
             Some(def_id)
         }
 
@@ -156,6 +157,14 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                  item.span,
                                                  trait_ref.def_id);
             self.add_trait_impl(trait_ref, impl_did);
+
+            if Some(trait_ref.def_id) == tcx.lang_items.unsized_trait() {
+                if let ty::TyUnsized(def_id, _) = self_type.ty.sty {
+                    // Update `unsized_impl_items` to include the default (trait) definition of the
+                    // `min_align_of_val` method
+                    tcx.unsized_impl_items.borrow_mut().insert(def_id, impl_items.clone());
+                }
+            }
         } else {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
@@ -326,6 +335,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 },
                 ty::TyEnum(type_def_id, _) |
                 ty::TyStruct(type_def_id, _) |
+                ty::TyUnsized(type_def_id, _) |
                 ty::TyClosure(type_def_id, _) => {
                     tcx.destructor_for_type
                        .borrow_mut()

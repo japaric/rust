@@ -1833,6 +1833,8 @@ pub enum Item_ {
     ItemForeignMod(ForeignMod),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
+    /// An unsized type, e.g. `unsized type Foo<A, B>`
+    ItemUnsizedTy(Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
@@ -1869,6 +1871,7 @@ impl Item_ {
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
             ItemTy(..) => "type alias",
+            ItemUnsizedTy(..) => "unsized type",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
             ItemTrait(..) => "trait",

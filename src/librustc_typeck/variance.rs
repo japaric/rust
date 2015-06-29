@@ -521,7 +521,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 
         match item.node {
             ast::ItemEnum(_, ref generics) |
-            ast::ItemStruct(_, ref generics) => {
+            ast::ItemStruct(_, ref generics) |
+            ast::ItemUnsizedTy(ref generics) => {
                 self.add_inferreds_for_item(item.id, false, generics);
             }
             ast::ItemTrait(_, ref generics, _, _) => {
@@ -656,6 +657,24 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                                                     self.invariant);
             }
 
+            // FIXME(japaric) this doesn't point out unused params on
+            // `impl<T, O> Unsized for Mat<T, O> { type Data = T; type Info = (usize, usize) }`
+            ast::ItemUnsizedTy(..) => {
+                let scheme = ty::lookup_item_type(tcx, did);
+
+                if let ty::TyUnsized(did, substs) = scheme.ty.sty {
+                    let data_ty = ty::fat_ptr_data(tcx, did, substs);
+                    let data_ptr_ty = ty::mk_mut_ptr(tcx, data_ty);
+                    let info_ty = ty::fat_ptr_info(tcx, did, substs);
+
+                    self.add_constraints_from_ty(&scheme.generics, data_ptr_ty, self.covariant);
+                    self.add_constraints_from_ty(&scheme.generics, info_ty, self.covariant);
+                } else {
+                    // TODO(japaric) span_bug
+                    unreachable!()
+                }
+            }
+
             ast::ItemExternCrate(_) |
             ast::ItemUse(_) |
             ast::ItemStatic(..) |
@@ -741,6 +760,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 ast_map::NodeItem(p) => {
                     match p.node {
                         ast::ItemTy(..) |
+                        ast::ItemUnsizedTy(..) |
                         ast::ItemEnum(..) |
                         ast::ItemStruct(..) |
                         ast::ItemTrait(..)   => is_inferred = true,
@@ -891,7 +911,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_ty(generics, typ, variance);
             }
 
-
             ty::TyRawPtr(ref mt) => {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
@@ -920,6 +939,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     item_type.generics.regions.get_slice(subst::TypeSpace),
                     substs,
                     variance);
+            }
+
+            ty::TyUnsized(def_id, substs) => {
+                let tcx = self.tcx();
+
+                let data_ty = ty::fat_ptr_data(tcx, def_id, substs);
+
+                self.add_constraints_from_ty(generics, data_ty, variance);
+
+                let info_ty = ty::fat_ptr_info(tcx, def_id, substs);
+
+                self.add_constraints_from_ty(generics, info_ty, variance);
             }
 
             ty::TyProjection(ref data) => {

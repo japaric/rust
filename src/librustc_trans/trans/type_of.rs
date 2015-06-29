@@ -179,7 +179,13 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
-            Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+            match ty::struct_tail(cx.tcx(), t).sty {
+                ty::TyUnsized(did, substs) => {
+                    let info_ty = ty::fat_ptr_info(cx.tcx(), did, substs);
+                    sizing_type_of(cx, info_ty)
+                },
+                _ => Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false),
+            }
         }
 
         ty::TyBool => Type::bool(cx),
@@ -192,7 +198,17 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             if type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
-                Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+                let info_ty = match ty::struct_tail(cx.tcx(), ty).sty {
+                    ty::TyUnsized(did, substs) => {
+                        let info_ty = ty::fat_ptr_info(cx.tcx(), did, substs);
+                        sizing_type_of(cx, info_ty)
+                    },
+                    _ => {
+                        Type::i8p(cx)
+                    }
+                };
+
+                Type::struct_(cx, &[Type::i8p(cx), info_ty], false)
             }
         }
 
@@ -230,7 +246,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             cx.sess().bug(&format!("fictitious type {:?} in sizing_type_of()",
                                    t))
         }
-        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
+        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr | ty::TyUnsized(..) => unreachable!()
     };
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
@@ -359,7 +375,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   let info_ty = match unsized_part.sty {
                       ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
                           Type::uint_from_ty(cx, ast::TyUs)
-                      }
+                      },
+                      ty::TyUnsized(did, substs) => {
+                          let t = ty::fat_ptr_info(cx.tcx(), did, substs);
+                          debug!("info_ty: {:?}", t);
+                          in_memory_type_of(cx, t)
+                      },
                       ty::TyTrait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \
                                    struct_tail: {:?} for ty={:?}",
@@ -385,6 +406,11 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       // when taking the address of an unsized field in a struct.
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
       ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
+      ty::TyUnsized(did, substs) => {
+          let t = ty::fat_ptr_data(cx.tcx(), did, substs);
+          debug!("data_ty: {:?}", t);
+          in_memory_type_of(cx, t)
+      },
 
       ty::TyBareFn(..) => {
           type_of_fn_from_ty(cx, t).ptr_to()

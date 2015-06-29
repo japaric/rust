@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
             ast::ItemTrait(..) | ast::ItemDefaultImpl(..) |
             ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemStruct(..) |
-            ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
+            ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) | ast::ItemUnsizedTy(..) |
             ast::ItemExternCrate(_) | ast::ItemUse(_) | ast::ItemMac(..) => {}
         }
     }
@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             ast::ItemTrait(..) | ast::ItemDefaultImpl(..) |
             ast::ItemStatic(..) | ast::ItemConst(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
-            ast::ItemMac(..) => {}
+            ast::ItemUnsizedTy(..) | ast::ItemMac(..) => {}
         }
     }
 }

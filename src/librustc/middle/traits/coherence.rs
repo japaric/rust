@@ -318,7 +318,8 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
 
         ty::TyEnum(def_id, _) |
-        ty::TyStruct(def_id, _) => {
+        ty::TyStruct(def_id, _) |
+        ty::TyUnsized(def_id, _) => {
             def_id.krate == ast::LOCAL_CRATE
         }
 

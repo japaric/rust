@@ -22,6 +22,7 @@ pub enum SimplifiedType {
     UintSimplifiedType(ast::UintTy),
     FloatSimplifiedType(ast::FloatTy),
     EnumSimplifiedType(ast::DefId),
+    UnsizedSimplifiedType(ast::DefId),
     StrSimplifiedType,
     VecSimplifiedType,
     PtrSimplifiedType,
@@ -62,6 +63,9 @@ pub fn simplify_type(tcx: &ty::ctxt,
         }
         ty::TyStruct(def_id, _) => {
             Some(StructSimplifiedType(def_id))
+        }
+        ty::TyUnsized(def_id, _) => {
+            Some(UnsizedSimplifiedType(def_id))
         }
         ty::TyRef(_, mt) => {
             // since we introduce auto-refs during method lookup, we

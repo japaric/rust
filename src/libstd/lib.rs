@@ -203,6 +203,8 @@ pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
+#[cfg(not(stage0))]
+pub use core::fat_ptr;
 pub use core::simd;
 pub use core::result;
 pub use core::option;

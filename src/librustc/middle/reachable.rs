@@ -290,7 +290,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
                     ast::ItemExternCrate(_) | ast::ItemUse(_) |
-                    ast::ItemTy(..) | ast::ItemStatic(_, _, _) |
+                    ast::ItemTy(..) | ast::ItemUnsizedTy(..) | ast::ItemStatic(_, _, _) |
                     ast::ItemMod(..) | ast::ItemForeignMod(..) |
                     ast::ItemImpl(..) | ast::ItemTrait(..) |
                     ast::ItemStruct(..) | ast::ItemEnum(..) |

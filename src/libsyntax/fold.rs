@@ -932,6 +932,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         ItemTy(t, generics) => {
             ItemTy(folder.fold_ty(t), folder.fold_generics(generics))
         }
+        ItemUnsizedTy(generics) => {
+            ItemUnsizedTy(folder.fold_generics(generics))
+        }
         ItemEnum(enum_definition, generics) => {
             ItemEnum(
                 ast::EnumDef {

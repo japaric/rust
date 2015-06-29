@@ -265,6 +265,8 @@ lets_do_this! {
     CopyTraitLangItem,               "copy",                    copy_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
 
+    UnsizedTraitLangItem,            "unsized",                 unsized_trait;
+
     DropTraitLangItem,               "drop",                    drop_trait;
 
     CoerceUnsizedTraitLangItem,      "coerce_unsized",          coerce_unsized_trait;

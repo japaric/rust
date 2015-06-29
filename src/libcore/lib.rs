@@ -153,6 +153,8 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
+#[cfg(not(stage0))]
+pub mod fat_ptr;
 
 #[doc(primitive = "bool")]
 mod bool {

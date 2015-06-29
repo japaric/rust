@@ -80,7 +80,9 @@ fn unsize_kind<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None => None,
                 Some(f) => unsize_kind(fcx, f.mt.ty)
             }
-        }
+        },
+        // XXX(japaric) pass def id of the Info field
+        ty::TyUnsized(..) => unimplemented!(),
         // We should really try to normalize here.
         ty::TyProjection(ref pi) => Some(UnsizeKind::OfProjection(pi)),
         ty::TyParam(ref p) => Some(UnsizeKind::OfParam(p)),

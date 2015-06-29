@@ -171,7 +171,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let name = token::get_ident(foreign_item.ident);
 
     // For `transmute` we can just trans the input expr directly into dest
-    if &name[..] == "transmute" {
+    if &name[..] == "transmute" || &name[..] == "unchecked_transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
         match args {
             callee::ArgExprs(arg_exprs) => {
@@ -370,7 +370,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "size_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let info = match ty::struct_tail(tcx, tp_ty).sty {
+                    ty::TyUnsized(..) => expr::get_len(bcx, llargs[0]),
+                    _ => Load(bcx, expr::get_len(bcx, llargs[0])),
+                };
                 let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, info);
                 llsize
             } else {
@@ -385,7 +388,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "min_align_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let info = match ty::struct_tail(tcx, tp_ty).sty {
+                    ty::TyUnsized(..) => expr::get_len(bcx, llargs[0]),
+                    _ => Load(bcx, expr::get_len(bcx, llargs[0])),
+                };
                 let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, info);
                 llalign
             } else {

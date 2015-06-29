@@ -486,6 +486,13 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
         }
 
+        (&ty::TyUnsized(a_id, a_substs), &ty::TyUnsized(b_id, b_substs))
+            if a_id == b_id =>
+        {
+            let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
+            Ok(ty::mk_unsized(tcx, a_id, tcx.mk_substs(substs)))
+        }
+
         (&ty::TyClosure(a_id, a_substs),
          &ty::TyClosure(b_id, b_substs))
             if a_id == b_id =>
