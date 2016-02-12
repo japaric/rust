@@ -16,7 +16,7 @@ use std::process::Command;
 use build_helper::output;
 
 use build::util::{exe, staticlib, libdir, mtime, is_dylib};
-use build::{Build, Compiler};
+use build::{Build, Compiler, native};
 
 /// Build the standard library.
 ///
@@ -34,14 +34,22 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     let libdir = build.sysroot_libdir(stage, &host, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
-    t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
-                     libdir.join(staticlib("compiler-rt", target))));
+
+    // NOTE compiler-rt is built in stage 0
+    // For stage 0, pass cargo env variables needed to build compiler-rt
+    // For stage 1 onwards, we move compiler-rt where expected
+    let ref mut cargo = build.cargo(stage, compiler, true, target, "build");
+    if stage == 0 {
+        native::compiler_rt(build, target, cargo);
+    } else {
+        t!(fs::hard_link(build.compiler_rt_out(target).join("libcompiler-rt.a"),
+                         libdir.join(staticlib("compiler-rt", target))));
+    }
 
     build_startup_objects(build, target, &libdir);
 
     let out_dir = build.cargo_out(stage, &host, true, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
-    let mut cargo = build.cargo(stage, compiler, true, target, "build");
     cargo.arg("--features").arg(build.std_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
@@ -57,7 +65,14 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
         }
     }
 
-    build.run(&mut cargo);
+    build.run(cargo);
+
+    // Copy compiler-rt.a where stage0-rustc expects it
+    if stage == 0 {
+        t!(fs::hard_link(build.compiler_rt_out(target).join("libcompiler-rt.a"),
+                         libdir.join(staticlib("compiler-rt", target))));
+    }
+
     add_to_sysroot(&out_dir, &libdir);
 }
 

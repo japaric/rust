@@ -3,6 +3,13 @@ authors = ["The Rust Project Developers"]
 name = "core"
 version = "0.0.0"
 
+[dependencies]
+compiler-rt = { path = "../compiler-rt", optional = true }
+
+[features]
+compiler_rt = ["compiler-rt"]
+default = ["compiler_rt"]
+
 [lib]
 name = "core"
 path = "lib.rs"

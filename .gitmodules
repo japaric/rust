@@ -3,7 +3,7 @@
 	url = https://github.com/rust-lang/llvm.git
 	branch = master
 [submodule "src/compiler-rt"]
-	path = src/compiler-rt
+	path = src/compiler-rt/src
 	url = https://github.com/rust-lang/compiler-rt.git
 [submodule "src/rt/hoedown"]
 	path = src/rt/hoedown

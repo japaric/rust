@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
@@ -70,7 +69,6 @@ pub struct Build {
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, PathBuf)>,
     cxx: HashMap<String, gcc::Tool>,
-    compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
 }
 
 impl Build {
@@ -106,7 +104,6 @@ impl Build {
             bootstrap_key: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
-            compiler_rt_built: RefCell::new(HashMap::new()),
         }
     }
 
@@ -131,9 +128,6 @@ impl Build {
             match target.src {
                 Llvm { _dummy } => {
                     native::llvm(self, target.target);
-                }
-                CompilerRt { _dummy } => {
-                    native::compiler_rt(self, target.target);
                 }
                 Libstd { stage, compiler } => {
                     compile::std(self, stage, target.target, &compiler);
@@ -356,7 +350,7 @@ impl Build {
         self.out.join(target).join("llvm")
     }
 
-    /// Root output directory for compiler-rt compiled for `target`
+    // Root output directory for compiler-rt compiled for `target`
     fn compiler_rt_out(&self, target: &str) -> PathBuf {
         self.out.join(target).join("compiler-rt")
     }
