@@ -217,10 +217,10 @@ ifdef CFG_ENABLE_FAST_MAKE
 COMPRT_DEPS := $(S)/.gitmodules
 else
 COMPRT_DEPS := $(wildcard \
-              $(S)src/compiler-rt/* \
-              $(S)src/compiler-rt/*/* \
-              $(S)src/compiler-rt/*/*/* \
-              $(S)src/compiler-rt/*/*/*/*)
+              $(S)src/compiler-rt/src/* \
+              $(S)src/compiler-rt/src/*/* \
+              $(S)src/compiler-rt/src/*/*/* \
+              $(S)src/compiler-rt/src/*/*/*/*)
 endif
 
 COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
@@ -230,7 +230,7 @@ COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 ifeq ($$(findstring msvc,$(1)),msvc)
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	@$$(call E, cmake: compiler-rt)
-	$$(Q)cd "$$(COMPRT_BUILD_DIR_$(1))"; $$(CFG_CMAKE) "$(S)src/compiler-rt" \
+	$$(Q)cd "$$(COMPRT_BUILD_DIR_$(1))"; $$(CFG_CMAKE) "$(S)src/compiler-rt/src" \
 		-DCMAKE_BUILD_TYPE=$$(LLVM_BUILD_CONFIG_MODE) \
 		-DLLVM_CONFIG_PATH=$$(LLVM_CONFIG_$(1)) \
 		-G"$$(CFG_CMAKE_GENERATOR)"
@@ -265,8 +265,8 @@ else
 
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: compiler-rt)
-	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt" \
-		ProjSrcRoot="$(S)src/compiler-rt" \
+	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt/src" \
+		ProjSrcRoot="$(S)src/compiler-rt/src" \
 		ProjObjRoot="$$(abspath $$(COMPRT_BUILD_DIR_$(1)))" \
 		CC='$$(COMPRT_CC_$(1))' \
 		AR='$$(COMPRT_AR_$(1))' \
