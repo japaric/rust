@@ -163,7 +163,8 @@ impl<'a> Step<'a> {
                 vec![self.libstd(stage, compiler), self.llvm(())]
             }
             Source::Libstd { stage: _, compiler } => {
-                vec![self.rustc(compiler.stage).target(compiler.host)]
+                vec![self.llvm(()).target(&build.config.build),
+                     self.rustc(compiler.stage).target(compiler.host)]
             }
             Source::Llvm { _dummy } => Vec::new(),
         }
