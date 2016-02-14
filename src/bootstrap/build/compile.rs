@@ -15,7 +15,7 @@ use std::process::Command;
 
 use build_helper::output;
 
-use build::util::{exe, staticlib, libdir, mtime, is_dylib};
+use build::util::{exe, libdir, mtime, is_dylib};
 use build::{Build, Compiler};
 
 /// Build the standard library.
@@ -29,13 +29,8 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     println!("Building stage{} std artifacts ({} -> {})", stage,
              host, target);
 
-    // Move compiler-rt into place as it'll be required by the compiler when
-    // building the standard library to link the dylib of libstd
     let libdir = build.sysroot_libdir(stage, &host, target);
-    let _ = fs::remove_dir_all(&libdir);
-    t!(fs::create_dir_all(&libdir));
-    t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
-                     libdir.join(staticlib("compiler-rt", target))));
+    let _ = fs::create_dir_all(&libdir);
 
     build_startup_objects(build, target, &libdir);
 

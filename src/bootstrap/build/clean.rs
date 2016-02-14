@@ -18,8 +18,6 @@ pub fn clean(build: &Build) {
 
         let out = build.out.join(host);
 
-        rm_rf(build, &out.join("compiler-rt"));
-
         for stage in 0..4 {
             rm_rf(build, &out.join(format!("stage{}", stage)));
             rm_rf(build, &out.join(format!("stage{}-std", stage)));

@@ -25,7 +25,6 @@ macro_rules! targets {
             (libstd, Libstd { stage: u32, compiler: Compiler<'a> }),
             (librustc, Librustc { stage: u32, compiler: Compiler<'a> }),
             (llvm, Llvm { _dummy: () }),
-            (compiler_rt, CompilerRt { _dummy: () }),
         }
     }
 }
@@ -120,7 +119,6 @@ fn add_steps<'a>(build: &'a Build,
             "librustc" => targets.push(target.libstd(stage, compiler)),
             "rustc" => targets.push(host.rustc(stage)),
             "llvm" => targets.push(target.llvm(())),
-            "compiler-rt" => targets.push(target.compiler_rt(())),
             _ => panic!("unknown build target: `{}`", step),
         }
     }
@@ -165,11 +163,7 @@ impl<'a> Step<'a> {
                 vec![self.libstd(stage, compiler), self.llvm(())]
             }
             Source::Libstd { stage: _, compiler } => {
-                vec![self.compiler_rt(()),
-                     self.rustc(compiler.stage).target(compiler.host)]
-            }
-            Source::CompilerRt { _dummy } => {
-                vec![self.llvm(()).target(&build.config.build)]
+                vec![self.rustc(compiler.stage).target(compiler.host)]
             }
             Source::Llvm { _dummy } => Vec::new(),
         }

@@ -807,9 +807,6 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     if sess.target.target.options.is_like_osx && !ab.using_llvm() {
         ab.build();
     }
-    if !sess.target.target.options.no_compiler_rt {
-        ab.add_native_library("compiler-rt");
-    }
 
     let mut all_native_libs = vec![];
 
@@ -877,9 +874,6 @@ fn link_natively(sess: &Session, dylib: bool,
         };
         link_args(&mut *linker, sess, dylib, tmpdir,
                   objects, out_filename, trans, outputs);
-        if !sess.target.target.options.no_compiler_rt {
-            linker.link_staticlib("compiler-rt");
-        }
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {

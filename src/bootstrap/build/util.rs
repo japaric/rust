@@ -16,14 +16,6 @@ use std::process::Command;
 use bootstrap::{dylib_path, dylib_path_var};
 use filetime::FileTime;
 
-pub fn staticlib(name: &str, target: &str) -> String {
-    if target.contains("windows-msvc") {
-        format!("{}.lib", name)
-    } else {
-        format!("lib{}.a", name)
-    }
-}
-
 pub fn mtime(path: &Path) -> FileTime {
     fs::metadata(path).map(|f| {
         FileTime::from_last_modification_time(&f)
