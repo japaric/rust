@@ -112,7 +112,6 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 /// Passes configuration information to `cargo build` using env variables
 pub fn compiler_rt(build: &Build, target: &str, cargo: &mut Command) {
     let dst = build.compiler_rt_out(target);
-    let mode = if build.config.rust_optimize {"Release"} else {"Debug"};
     let build_llvm_config = build.llvm_out(&build.config.build)
                                  .join("bin")
                                  .join(exe("llvm-config", &build.config.build));
@@ -120,5 +119,4 @@ pub fn compiler_rt(build: &Build, target: &str, cargo: &mut Command) {
     cargo.env("COMPILER_RT_C_COMPILER", build.cc(target));
     cargo.env("COMPILER_RT_LLVM_CONFIG", build_llvm_config);
     cargo.env("COMPILER_RT_OUT_DIR", dst);
-    cargo.env("COMPILER_RT_PROFILE", mode);
 }

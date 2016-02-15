@@ -29,13 +29,15 @@ fn main() {
         }
     }
 
-    let ref build_llvm_config = env::var_os("COMPILER_RT_LLVM_CONFIG").unwrap();
-    let ref cc = env::var_os("COMPILER_RT_C_COMPILER").unwrap();
-    let ref out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    let ref profile = env::var("COMPILER_RT_PROFILE").unwrap();
+    let profile = match &env::var("PROFILE").unwrap()[..] {
+        "debug" => "Debug",
+        "release" => "Release",
+        p => panic!("unknown profile: {}", p),
+    };
 
-    let ref target = env::var("TARGET").unwrap();
     let ref build = env::var("HOST").unwrap();
+    let ref out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let ref target = env::var("TARGET").unwrap();
 
     let arch = target.split('-').next().unwrap();
     let (dir, build_target, libname) = if target.contains("linux") {
@@ -64,12 +66,21 @@ fn main() {
        .host(build)
        .out_dir(out_dir)
        .profile(profile)
-       .define("LLVM_CONFIG_PATH", build_llvm_config)
        .define("COMPILER_RT_DEFAULT_TARGET_TRIPLE", target)
        .define("COMPILER_RT_BUILD_SANITIZERS", "OFF")
        .define("COMPILER_RT_BUILD_EMUTLS", "OFF")
-       .define("CMAKE_C_COMPILER", cc)
        .build_target(&build_target);
+    // NOTE(japaric) for `cargo build --target $supported_triple` this doesn't seem to be needed,
+    // the cmake crate chooses a sensible C compiler by default
+    if let Some(cc) = env::var_os("COMPILER_RT_C_COMPILER") {
+        cfg.define("CMAKE_C_COMPILER", cc);
+    }
+    // NOTE(japaric) for `cargo build --target $supported_triple` cmake will use the llvm-config
+    // found in PATH. This causes problems in Ubuntu because cmake will try to include
+    // LLVMConfig.cmake from paths where is not available.
+    if let Some(llvm_config) = env::var_os("COMPILER_RT_LLVM_CONFIG") {
+        cfg.define("LLVM_CONFIG_PATH", llvm_config);
+    }
     cfg.build();
 
     // copy the static library to a more arch-independent place
