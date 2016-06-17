@@ -1623,7 +1623,7 @@ do
 
         msg "configuring LLVM for $gnu_t"
 
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
+        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc,nvptx"
         LLVM_BUILD="--build=$gnu_t"
         LLVM_HOST="--host=$gnu_t"
         LLVM_TARGET="--target=$gnu_t"
