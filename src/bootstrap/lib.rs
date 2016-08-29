@@ -334,6 +334,11 @@ impl Build {
                 continue
             }
 
+            if submodule.path.components().any(|c| c == Component::Normal("lld".as_ref())) &&
+                !self.config.lld {
+                    continue
+            }
+
             // `submodule.path` is the relative path to a submodule (from the repository root)
             // `submodule_path` is the path to a submodule from the cwd
 
@@ -527,6 +532,9 @@ impl Build {
         let mut features = String::new();
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
+        }
+        if self.config.lld {
+            features.push_str(" lld");
         }
         return features
     }

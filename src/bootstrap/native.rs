@@ -92,6 +92,11 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
        .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+    if build.config.lld {
+        cfg.define("LLVM_EXTERNAL_LLD_SOURCE_DIR", build.src.join("src/lld"));
+        cfg.define("LLVM_EXTERNAL_PROJECTS", "lld");
+    }
+
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
     }

@@ -923,6 +923,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some statistics about AST and HIR"),
+    use_lld: bool = (false, parse_bool, [UNTRACKED], "use lld as linker"),
 }
 
 pub fn default_lib_output() -> CrateType {

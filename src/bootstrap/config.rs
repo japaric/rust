@@ -38,8 +38,6 @@ use util::push_exe_path;
 /// `src/bootstrap/config.toml.example`.
 #[derive(Default)]
 pub struct Config {
-    pub ccache: bool,
-    pub ninja: bool,
     pub verbose: bool,
     pub submodules: bool,
     pub compiler_docs: bool,
@@ -47,13 +45,16 @@ pub struct Config {
     pub vendor: bool,
     pub target_config: HashMap<String, Target>,
 
-    // llvm codegen options
+    // llvm options (see struct Llvm)
+    pub ccache: bool,
+    pub ninja: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_release_debuginfo: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
+    pub lld: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -145,6 +146,7 @@ struct Llvm {
     release_debuginfo: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
+    lld: Option<bool>,
 }
 
 /// TOML representation of how the Rust build is configured.
@@ -254,6 +256,7 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            set(&mut config.lld, llvm.lld);
         }
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
@@ -362,6 +365,7 @@ impl Config {
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
                 ("VENDOR", self.vendor),
+                ("LLD", self.lld),
             }
 
             match key {
