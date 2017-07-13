@@ -17,6 +17,9 @@
 //! * Executing a panic up to doing the actual implementation
 //! * Shims around "try"
 
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use core::panicking::{Location, PanicInfo};
+
 use io::prelude::*;
 
 use any::Any;
@@ -155,182 +158,6 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
             Hook::Default => Box::new(default_hook),
             Hook::Custom(ptr) => Box::from_raw(ptr),
         }
-    }
-}
-
-/// A struct providing information about a panic.
-///
-/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
-/// function.
-///
-/// [`set_hook`]: ../../std/panic/fn.set_hook.html
-///
-/// # Examples
-///
-/// ```should_panic
-/// use std::panic;
-///
-/// panic::set_hook(Box::new(|panic_info| {
-///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
-/// }));
-///
-/// panic!("Normal panic");
-/// ```
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-#[derive(Debug)]
-pub struct PanicInfo<'a> {
-    payload: &'a (Any + Send),
-    location: Location<'a>,
-}
-
-impl<'a> PanicInfo<'a> {
-    /// Returns the payload associated with the panic.
-    ///
-    /// This will commonly, but not always, be a `&'static str` or [`String`].
-    ///
-    /// [`String`]: ../../std/string/struct.String.html
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
-    /// }));
-    ///
-    /// panic!("Normal panic");
-    /// ```
-    #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn payload(&self) -> &(Any + Send) {
-        self.payload
-    }
-
-    /// Returns information about the location from which the panic originated,
-    /// if available.
-    ///
-    /// This method will currently always return [`Some`], but this may change
-    /// in future versions.
-    ///
-    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
-    ///     } else {
-    ///         println!("panic occured but can't get location information...");
-    ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
-    /// ```
-    #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn location(&self) -> Option<&Location> {
-        Some(&self.location)
-    }
-}
-
-/// A struct containing information about the location of a panic.
-///
-/// This structure is created by the [`location`] method of [`PanicInfo`].
-///
-/// [`location`]: ../../std/panic/struct.PanicInfo.html#method.location
-/// [`PanicInfo`]: ../../std/panic/struct.PanicInfo.html
-///
-/// # Examples
-///
-/// ```should_panic
-/// use std::panic;
-///
-/// panic::set_hook(Box::new(|panic_info| {
-///     if let Some(location) = panic_info.location() {
-///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
-///     } else {
-///         println!("panic occured but can't get location information...");
-///     }
-/// }));
-///
-/// panic!("Normal panic");
-/// ```
-#[derive(Debug)]
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub struct Location<'a> {
-    file: &'a str,
-    line: u32,
-    col: u32,
-}
-
-impl<'a> Location<'a> {
-    /// Returns the name of the source file from which the panic originated.
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured in file '{}'", location.file());
-    ///     } else {
-    ///         println!("panic occured but can't get location information...");
-    ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
-    /// ```
-    #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn file(&self) -> &str {
-        self.file
-    }
-
-    /// Returns the line number from which the panic originated.
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured at line {}", location.line());
-    ///     } else {
-    ///         println!("panic occured but can't get location information...");
-    ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
-    /// ```
-    #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn line(&self) -> u32 {
-        self.line
-    }
-
-    /// Returns the column from which the panic originated.
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// #![feature(panic_col)]
-    /// use std::panic;
-    ///
-    /// panic::set_hook(Box::new(|panic_info| {
-    ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured at column {}", location.column());
-    ///     } else {
-    ///         println!("panic occured but can't get location information...");
-    ///     }
-    /// }));
-    ///
-    /// panic!("Normal panic");
-    /// ```
-    #[unstable(feature = "panic_col", reason = "recently added", issue = "42939")]
-    pub fn column(&self) -> u32 {
-        self.col
     }
 }
 
@@ -598,14 +425,7 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
     }
 
     unsafe {
-        let info = PanicInfo {
-            payload: &*msg,
-            location: Location {
-                file,
-                line,
-                col,
-            },
-        };
+        let info = PanicInfo::__new(&*msg, None, file, line, col);
         HOOK_LOCK.read();
         match HOOK {
             Hook::Default => default_hook(&info),

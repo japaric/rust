@@ -36,6 +36,7 @@
                       and related macros",
             issue = "0")]
 
+use any::Any;
 use fmt;
 
 #[cold] #[inline(never)] // this is the slow path, always
@@ -90,4 +91,202 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
     }
     let (file, line, col) = *file_line_col;
     unsafe { panic_impl(fmt, file, line, col) }
+}
+
+/// A struct providing information about a panic.
+///
+/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
+/// function.
+///
+/// [`set_hook`]: ../../std/panic/fn.set_hook.html
+///
+/// # Examples
+///
+/// ```should_panic
+/// use std::panic;
+///
+/// panic::set_hook(Box::new(|panic_info| {
+///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+/// }));
+///
+/// panic!("Normal panic");
+/// ```
+#[unstable(feature = "panic_impl", reason = "recently added", issue = "0")]
+#[derive(Debug)]
+pub struct PanicInfo<'a> {
+    message: Option<fmt::Arguments<'a>>,
+    payload: &'a (Any + Send),
+    location: Location<'a>,
+}
+
+impl<'a> PanicInfo<'a> {
+    #[unstable(feature = "panic_info_internals",
+               reason = "implementation detail",
+               issue = "0")]
+    pub fn __new(payload: &'a (Any + Send),
+                 message: Option<fmt::Arguments<'a>>,
+                 file: &'static str,
+                 line: u32,
+                 col: u32) -> Self {
+        PanicInfo {
+            message,
+            payload,
+            location: Location { file, line, col },
+        }
+    }
+
+    /// TODO
+    #[unstable(feature = "panic_impl", reason = "recently added", issue = "0")]
+    pub fn message(&self) -> Option<&fmt::Arguments> {
+        self.message.as_ref()
+    }
+
+    /// Returns the payload associated with the panic.
+    ///
+    /// This will commonly, but not always, be a `&'static str` or [`String`].
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn payload(&self) -> &(Any + Send) {
+        self.payload
+    }
+
+    /// Returns information about the location from which the panic originated,
+    /// if available.
+    ///
+    /// This method will currently always return [`Some`], but this may change
+    /// in future versions.
+    ///
+    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
+    ///     } else {
+    ///         println!("panic occured but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn location(&self) -> Option<&Location> {
+        Some(&self.location)
+    }
+}
+
+/// A struct containing information about the location of a panic.
+///
+/// This structure is created by the [`location`] method of [`PanicInfo`].
+///
+/// [`location`]: ../../std/panic/struct.PanicInfo.html#method.location
+/// [`PanicInfo`]: ../../std/panic/struct.PanicInfo.html
+///
+/// # Examples
+///
+/// ```should_panic
+/// use std::panic;
+///
+/// panic::set_hook(Box::new(|panic_info| {
+///     if let Some(location) = panic_info.location() {
+///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
+///     } else {
+///         println!("panic occured but can't get location information...");
+///     }
+/// }));
+///
+/// panic!("Normal panic");
+/// ```
+#[unstable(feature = "panic_impl", reason = "recently added", issue = "0")]
+#[derive(Debug)]
+pub struct Location<'a> {
+    file: &'a str,
+    line: u32,
+    col: u32,
+}
+
+impl<'a> Location<'a> {
+    /// Returns the name of the source file from which the panic originated.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occured in file '{}'", location.file());
+    ///     } else {
+    ///         println!("panic occured but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn file(&self) -> &str {
+        self.file
+    }
+
+    /// Returns the line number from which the panic originated.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occured at line {}", location.line());
+    ///     } else {
+    ///         println!("panic occured but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn line(&self) -> u32 {
+        self.line
+    }
+
+    /// Returns the column from which the panic originated.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// #![feature(panic_col)]
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occured at column {}", location.column());
+    ///     } else {
+    ///         println!("panic occured but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[unstable(feature = "panic_col", reason = "recently added", issue = "42939")]
+    pub fn column(&self) -> u32 {
+        self.col
+    }
 }
