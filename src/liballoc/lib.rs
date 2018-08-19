@@ -120,6 +120,7 @@
 #![feature(exact_chunks)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
+#![feature(maybe_uninit)]
 
 // Allow testing this library
 
