@@ -448,7 +448,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
             }
 
-            if sized && fields.iter().any(|f| f.abi == Abi::Uninhabited) {
+            if sized && fields.iter().any(|f| f.abi.is_uninhabited()) {
                 abi = Abi::Uninhabited;
             }
 
@@ -723,7 +723,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // See issue #49298 for more details on the need to leave space
                 // for non-ZST uninhabited data (mostly partial initialization).
                 let absent = |fields: &[TyLayout]| {
-                    let uninhabited = fields.iter().any(|f| f.abi == Abi::Uninhabited);
+                    let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
                     let is_zst = fields.iter().all(|f| f.is_zst());
                     uninhabited && is_zst
                 };
@@ -859,7 +859,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 _ => Abi::Aggregate { sized: true },
                             };
 
-                            if st.iter().all(|v| v.abi == Abi::Uninhabited) {
+                            if st.iter().all(|v| v.abi.is_uninhabited()) {
                                 abi = Abi::Uninhabited;
                             }
 
@@ -887,7 +887,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let discr_type = def.repr.discr_type();
                 let bits = Integer::from_attr(tcx, discr_type).size().bits();
                 for (i, discr) in def.discriminants(tcx).enumerate() {
-                    if variants[i].iter().any(|f| f.abi == Abi::Uninhabited) {
+                    if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
                         continue;
                     }
                     let mut x = discr.val as i128;
@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
                 }
 
-                if layout_variants.iter().all(|v| v.abi == Abi::Uninhabited) {
+                if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
                     abi = Abi::Uninhabited;
                 }
 
