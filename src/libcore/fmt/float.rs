@@ -24,7 +24,7 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
         let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
         let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
                                                     *num, sign, precision,
-                                                    false, buf.get_mut(), parts.get_mut());
+                                                    false, buf.get_mut(), &mut parts);
         fmt.pad_formatted_parts(&formatted)
     }
 }
