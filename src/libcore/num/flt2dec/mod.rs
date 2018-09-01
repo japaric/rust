@@ -131,6 +131,8 @@ functions.
             issue = "0")]
 
 use i16;
+use mem::MaybeUninit;
+use slice;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;
@@ -604,32 +606,35 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// `[+][0.][0000][2][0000]` with `frac_digits = 10`.
 pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                                     sign: Sign, frac_digits: usize, _upper: bool,
-                                    buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
+                                    buf: &'a mut [u8],
+                                    parts: &'a mut [MaybeUninit<Part<'a>>]) -> Formatted<'a>
         where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     assert!(parts.len() >= 4);
 
     let (negative, full_decoded) = decode(v);
     let sign = determine_sign(sign, &full_decoded, negative);
+    let parts_head = parts.as_mut_ptr() as *mut Part;
+    let parts_len = parts.len();
     match full_decoded {
-        FullDecoded::Nan => {
-            parts[0] = Part::Copy(b"NaN");
-            Formatted { sign, parts: &parts[..1] }
+        FullDecoded::Nan => unsafe {
+            parts[0].set(Part::Copy(b"NaN"));
+            Formatted { sign, parts: slice::from_raw_parts(parts_head, 1) }
         }
-        FullDecoded::Infinite => {
-            parts[0] = Part::Copy(b"inf");
-            Formatted { sign, parts: &parts[..1] }
+        FullDecoded::Infinite => unsafe {
+            parts[0].set(Part::Copy(b"inf"));
+            Formatted { sign, parts: slice::from_raw_parts(parts_head, 1) }
         }
-        FullDecoded::Zero => {
+        FullDecoded::Zero => unsafe {
             if frac_digits > 0 { // [0.][0000]
-                parts[0] = Part::Copy(b"0.");
-                parts[1] = Part::Zero(frac_digits);
-                Formatted { sign, parts: &parts[..2] }
+                parts[0].set(Part::Copy(b"0."));
+                parts[1].set(Part::Zero(frac_digits));
+                Formatted { sign, parts: slice::from_raw_parts(parts_head, 2) }
             } else {
-                parts[0] = Part::Copy(b"0");
-                Formatted { sign, parts: &parts[..1] }
+                parts[0].set(Part::Copy(b"0"));
+                Formatted { sign, parts: slice::from_raw_parts(parts_head, 1) }
             }
         }
-        FullDecoded::Finite(ref decoded) => {
+        FullDecoded::Finite(ref decoded) => unsafe {
             let maxlen = estimate_max_buf_len(decoded.exp);
             assert!(buf.len() >= maxlen);
 
@@ -644,18 +649,22 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                 // only after the final rounding-up; it's a regular case with `exp = limit + 1`.
                 debug_assert_eq!(len, 0);
                 if frac_digits > 0 { // [0.][0000]
-                    parts[0] = Part::Copy(b"0.");
-                    parts[1] = Part::Zero(frac_digits);
-                    Formatted { sign, parts: &parts[..2] }
+                    parts[0].set(Part::Copy(b"0."));
+                    parts[1].set(Part::Zero(frac_digits));
+                    Formatted { sign, parts: slice::from_raw_parts(parts_head, 2) }
                 } else {
-                    parts[0] = Part::Copy(b"0");
-                    Formatted { sign, parts: &parts[..1] }
+                    parts[0].set(Part::Copy(b"0"));
+                    Formatted { sign, parts: slice::from_raw_parts(parts_head, 1) }
                 }
             } else {
                 Formatted { sign,
-                            parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
+                            parts: digits_to_dec_str(
+                                &buf[..len],
+                                exp,
+                                frac_digits,
+                                slice::from_raw_parts_mut(parts_head, parts_len),
+                            ) }
             }
         }
     }
 }
-
